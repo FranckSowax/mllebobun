@@ -421,7 +421,7 @@
     // Chrome mobile : ignorer les resize verticaux de la barre d'adresse
     ScrollTrigger.config({ ignoreMobileResize: true });
     setupLenis();
-    spawnMotes();
+    /* particules de bord d'écran désactivées */
     const heroST = setupHero();
     setupTimeline();
     const finaleST = setupFinale();

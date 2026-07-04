@@ -205,7 +205,7 @@
     window.lenis = lenis;
 
     fitCanvas();
-    spawnMotes();
+    /* particules de bord d'écran désactivées */
 
     LAYERS.forEach(l => { l.el = $(l.id); l.visible = false; });
 

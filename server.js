@@ -48,7 +48,13 @@ const CATALOG = {
     name: 'Bo Bún Veggie',
     amount: 1190,
     description: 'Nems végétariens, tofu doré à la citronnelle, cacahuètes, oignons frits et crudités.'
-  }
+  },
+  /* suppléments */
+  sup_nems: { name: 'Supplément 2 nems', amount: 300, sup: true },
+  sup_poulet: { name: 'Supplément poulet', amount: 300, sup: true },
+  sup_boeuf: { name: 'Supplément bœuf', amount: 400, sup: true },
+  sup_tofu: { name: 'Supplément tofu mariné', amount: 300, sup: true },
+  sup_oeuf: { name: 'Supplément œuf au plat', amount: 100, sup: true }
 };
 
 const CANCEL_PATHS = ['/', '/bobunbeef/'];
@@ -186,7 +192,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         items: li.data.map(l => ({ name: l.description, qty: l.quantity, amount: l.amount_total })),
         amount: s.amount_total,
         note: (s.metadata && s.metadata.note !== '—' && s.metadata.note) || '',
-        phone: (s.customer_details && s.customer_details.phone) || '',
+        phone: (s.metadata && s.metadata.wa) || (s.customer_details && s.customer_details.phone) || '',
         email: (s.customer_details && s.customer_details.email) || '',
         status: 'payée'
       };
@@ -219,20 +225,31 @@ app.get('/api/health', (req, res) => {
 app.post('/api/checkout', async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Paiement non configuré.' });
   try {
-    const { items, note, page } = req.body || {};
+    const { items, note, page, wa } = req.body || {};
 
-    const line_items = (Array.isArray(items) ? items : [])
-      .filter(i => i && CATALOG[i.id] && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20)
-      .map(i => ({
-        quantity: i.qty,
-        price_data: {
-          currency: 'eur',
-          unit_amount: CATALOG[i.id].amount,
-          product_data: { name: CATALOG[i.id].name, description: CATALOG[i.id].description }
-        }
-      }));
+    const valid = (Array.isArray(items) ? items : [])
+      .filter(i => i && CATALOG[i.id] && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20);
 
-    if (!line_items.length) return res.status(400).json({ error: 'Panier vide.' });
+    if (!valid.some(i => !CATALOG[i.id].sup)) {
+      return res.status(400).json({ error: 'Ajoutez au moins un bol.' });
+    }
+
+    const waDigits = frPhoneToWa(wa);
+    if (waDigits.length < 10 || waDigits.length > 15) {
+      return res.status(400).json({ error: 'Numéro WhatsApp requis pour le code de retrait.' });
+    }
+
+    const line_items = valid.map(i => ({
+      quantity: i.qty,
+      price_data: {
+        currency: 'eur',
+        unit_amount: CATALOG[i.id].amount,
+        product_data: Object.assign(
+          { name: CATALOG[i.id].name },
+          CATALOG[i.id].description ? { description: CATALOG[i.id].description } : {}
+        )
+      }
+    }));
 
     const cleanNote = String(note || '').slice(0, 400).trim();
     const code = pickupCode();
@@ -244,8 +261,7 @@ app.post('/api/checkout', async (req, res) => {
       locale: 'fr',
       submit_type: 'pay',
       line_items,
-      phone_number_collection: { enabled: true },
-      metadata: { source: 'site — à emporter', note: cleanNote || '—', code },
+      metadata: { source: 'site — à emporter', note: cleanNote || '—', code, wa: waDigits },
       payment_intent_data: {
         description: `Commande à emporter ${code} — Mademoiselle Bobùn`
           + (cleanNote ? ` · Note : ${cleanNote.slice(0, 180)}` : '')
