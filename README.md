@@ -6,12 +6,19 @@ GSAP 3 / ScrollTrigger / Lenis via CDN. Aucune dépendance serveur.
 ## Structure
 
 ```
-index.html          page unique
+index.html          page « La descente du bol » (7 clips, bol sticky à 6 états)
 css/style.css       design system + layout + reduced-motion + mobile
 js/main.js          préchargement, scrubbing canvas, ligne SVG, bol, particules
-assets/frames/      511 frames webp (73 × 7 clips, 12 fps, 1280px) + manifest.json
+bobunbeef/          page « /bobunbeef » : une vidéo master 15 s scrubée en continu
+  index.html          canvas fixe + calques UI permutés dans les whiteouts
+  style.css           design system + mode flat (reduced-motion / fallback)
+  main.js             mapping scroll→frame non linéaire, lerp, portails
+assets/frames/      frames webp : 7 clips (73 × 1280px) + desktop/ (226 × 1600px)
+                    + mobile/ (226 × 900px) + manifest.json
 assets/bowl/        6 états du bol (webp 640×640)
-raw/                sources mp4/png — NE PAS DÉPLOYER (30 Mo inutiles en prod)
+assets/video/       bobun_1080.mp4 (fallback + reduced-motion, 8,6 Mo)
+assets/poster.jpg   frame finale (OG image + poster vidéo)
+raw/                sources mp4/png — NE PAS DÉPLOYER (~70 Mo inutiles en prod)
 ```
 
 ## Lancer en local
