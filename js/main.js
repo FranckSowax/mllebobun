@@ -418,6 +418,8 @@
 
   function fullInit() {
     gsap.registerPlugin(ScrollTrigger);
+    // Chrome mobile : ignorer les resize verticaux de la barre d'adresse
+    ScrollTrigger.config({ ignoreMobileResize: true });
     setupLenis();
     spawnMotes();
     const heroST = setupHero();
@@ -484,6 +486,7 @@
     $$('.station').forEach(st => registerCanvas(st.dataset.clip, $('canvas', st)));
 
     if (REDUCED) {
+      $$('.choix-media video').forEach(v => { v.removeAttribute('autoplay'); v.pause(); });
       reducedInit();
     } else {
       fullInit();

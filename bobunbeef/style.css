@@ -404,13 +404,26 @@ a { color: inherit; text-decoration: none; }
   justify-content: center;
 }
 
+.foot-infos {
+  font-family: var(--mono);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  line-height: 2.1;
+  color: rgba(244, 237, 224, .45);
+  text-align: center;
+  margin-top: 7vh;
+  padding: 0 4vw;
+}
+
+.foot-infos a:hover { color: var(--caramel); }
+
 .foot-base {
   font-family: var(--mono);
   font-size: .62rem;
   letter-spacing: .14em;
   color: rgba(244, 237, 224, .4);
   text-align: center;
-  margin-top: 10vh;
+  margin-top: 3vh;
 }
 
 /* ============ CALQUES CINÉMA ============ */
@@ -549,4 +562,26 @@ body.flat .hero-scrollhint { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .flame-core, .flame-halo, .hero-scrollhint span, #grain, .mote { animation: none; }
+}
+
+/* très petits écrans : nav compacte */
+@media (max-width: 400px) {
+  .nav-brand { font-size: .82rem; }
+  .nav-pill { font-size: .58rem; padding: 8px 12px; }
+}
+
+/* vidéos des cartes Trois bols */
+.choix-media {
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 6px;
+  background: #000;
+}
+
+.choix-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }

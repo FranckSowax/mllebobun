@@ -188,6 +188,9 @@
 
   function filmInit() {
     gsap.registerPlugin(ScrollTrigger);
+    // Chrome mobile : la barre d'adresse déclenche des resize verticaux
+    // en plein scroll — on les ignore pour éviter refresh et sauts.
+    ScrollTrigger.config({ ignoreMobileResize: true });
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
     lenis = new Lenis({
@@ -261,17 +264,30 @@
       });
     });
 
+    // resize : uniquement sur vrai changement de largeur (la hauteur
+    // bouge en continu sur mobile quand la barre d'adresse se rétracte)
+    let lastW = window.innerWidth;
+    let rid = null;
     window.addEventListener('resize', () => {
-      fitCanvas();
-      draw(Math.round(displayed));
-      ScrollTrigger.refresh();
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
+      clearTimeout(rid);
+      rid = setTimeout(() => {
+        fitCanvas();
+        draw(Math.round(displayed));
+        ScrollTrigger.refresh();
+      }, 220);
     });
   }
 
   /* ---------- Boot ---------- */
 
   async function boot() {
-    if (REDUCED) { flatMode(); return; }
+    if (REDUCED) {
+      document.querySelectorAll('.choix-media video').forEach(v => { v.removeAttribute('autoplay'); v.pause(); });
+      flatMode();
+      return;
+    }
 
     let manifest;
     try {
