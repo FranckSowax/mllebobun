@@ -1,0 +1,120 @@
+{
+  "categories": [
+    {
+      "id": "bobun",
+      "label": "BO BÚN",
+      "burst": "peanuts"
+    },
+    {
+      "id": "loclac",
+      "label": "LOC LAC",
+      "burst": "pepper"
+    },
+    {
+      "id": "rolls",
+      "label": "NEMS & ROULEAUX",
+      "burst": "herbs"
+    }
+  ],
+  "items": [
+    {
+      "cat": "bobun",
+      "id": "bobun-boeuf",
+      "nom": "BO BÙN BOEUF",
+      "desc": "Vermicelles au boeuf citronelle avec nems au poulet, cacahuètes, oignons frits et crudités",
+      "prix": "12,00",
+      "img": "assets/plats/bobun-boeuf.webp",
+      "imgSm": "assets/plats/bobun-boeuf@sm.webp",
+      "url": "https://mademoisellebobun.com/product/bo-bun-boeuf/",
+      "loclac_shake": false
+    },
+    {
+      "cat": "bobun",
+      "id": "bobun-poulet",
+      "nom": "BO BÙN POULET",
+      "desc": "Gà bun spécial vermicelles, poulet citronnelle et nems et cacahuètes, oignons frits et crudités.",
+      "prix": "12,00",
+      "img": "assets/plats/bobun-poulet.webp",
+      "imgSm": "assets/plats/bobun-poulet@sm.webp",
+      "url": "https://mademoisellebobun.com/product/bo-bun-poulet-2/",
+      "loclac_shake": false
+    },
+    {
+      "cat": "bobun",
+      "id": "bobun-crevette",
+      "nom": "BO BÙN CREVETTE",
+      "desc": "« Tôm bun avec vermicelles, crevettes décortiquées et nems, cacahuètes et oignons frits et crudités.",
+      "prix": "12,00",
+      "img": "assets/plats/bobun-crevette.webp",
+      "imgSm": "assets/plats/bobun-crevette@sm.webp",
+      "url": "https://mademoisellebobun.com/product/bo-bun-crevette-2/",
+      "loclac_shake": false
+    },
+    {
+      "cat": "bobun",
+      "id": "bobun-veggie",
+      "nom": "BO BÙN VEGGIE",
+      "desc": "« Bún Chay » :Vermicelles avec tofu marinés et frits et nems végétariens avec des oignons frits et crudités.",
+      "prix": "12,00",
+      "img": "assets/plats/bobun-veggie.webp",
+      "imgSm": "assets/plats/bobun-veggie@sm.webp",
+      "url": "https://mademoisellebobun.com/product/bo-bun-veggie-2/",
+      "loclac_shake": false
+    },
+    {
+      "cat": "loclac",
+      "id": "loclac-boeuf",
+      "nom": "LOC LAC BOEUF",
+      "desc": "Tendres pièces de boeufs coupés en dés marinés dans sauce secrète puis sauté au wok, accompagné de son riz rouge maison (sauté à la sauce tomate) ou blanc (Riz jasmin parfumé), le plat est servi également avec des crudités (salade concombre et pickles de carottes).",
+      "prix": "12,00",
+      "img": "assets/plats/loclac-boeuf.webp",
+      "imgSm": "assets/plats/loclac-boeuf@sm.webp",
+      "url": "https://mademoisellebobun.com/product/loc-lac-boeuf/",
+      "loclac_shake": true
+    },
+    {
+      "cat": "loclac",
+      "id": "loclac-poulet",
+      "nom": "LOC LAC POULET",
+      "desc": "Délicieux morceaux de poulet frits puis sauté dans une sauce caramélisée accompagné de son riz rouge (sauté à la sauce tomate) ou blanc et ses crudités. (Riz jasmin parfumé), le plat est servi également avec des crudités (salade concombre et pickles de carottes).",
+      "prix": "12,00",
+      "img": "assets/plats/loclac-poulet.webp",
+      "imgSm": "assets/plats/loclac-poulet@sm.webp",
+      "url": "https://mademoisellebobun.com/product/loc-lac-poulet-2/",
+      "loclac_shake": true
+    },
+    {
+      "cat": "loclac",
+      "id": "loclac-veggie",
+      "nom": "LOC LAC VEGGIE",
+      "desc": "Sautés de légumes variés accompagné de dés de tofu, le tout sauté dans une sauce secrète, accompagné de son riz rouge (sauté à la sauce tomate) ou blanc (Riz jasmin parfumé), le plat est servi également avec des crudités (salade concombre et pickles de carottes).",
+      "prix": "12,00",
+      "img": "assets/plats/loclac-veggie.webp",
+      "imgSm": "assets/plats/loclac-veggie@sm.webp",
+      "url": "https://mademoisellebobun.com/product/loc-lac-veggie-2/",
+      "loclac_shake": true
+    },
+    {
+      "cat": "rolls",
+      "id": "nems",
+      "nom": "NEMS « Cha Gio »",
+      "desc": "Le nem rán ou chả giò est un mets festif traditionnel du Viêt Nam. Très apprécié à l’ancienne cour impériale, ce mets est communément appelé pâté impérial ou rouleau impérial dans la francophonie .",
+      "prix": "6,00",
+      "img": "assets/plats/nems.webp",
+      "imgSm": "assets/plats/nems@sm.webp",
+      "url": "https://mademoisellebobun.com/product/nems-cha-gio/",
+      "loclac_shake": false
+    },
+    {
+      "cat": "rolls",
+      "id": "rouleaux",
+      "nom": "ROULEAUX DE PRINTEMPS  » GOI CUON »",
+      "desc": "Le rouleau de printemps, appelé gỏi cuốn, bo cuốn ou bi cuốn en vietnamien selon la farce, spring roll en anglais, est une spécialité culinaire du Vietnam.",
+      "prix": "6,00",
+      "img": "assets/plats/rouleaux.webp",
+      "imgSm": "assets/plats/rouleaux@sm.webp",
+      "url": "https://mademoisellebobun.com/product/rouleaux-de-printemps-goi-cuon/",
+      "loclac_shake": false
+    }
+  ]
+}

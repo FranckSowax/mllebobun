@@ -84,7 +84,7 @@
 
   /* ================= DONNÉES + MODES ================= */
 
-  fetch('../data/menu.json').then(r => r.json()).then(menu => {
+  fetch('../assets/menu.json').then(r => r.json()).then(menu => {
     if (REDUCED) buildGrid(menu); else initWheel(menu);
   }).catch(() => buildGridFallback());
 
