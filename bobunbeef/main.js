@@ -15,7 +15,7 @@
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const IS_MOBILE = window.matchMedia('(max-width: 820px)').matches;
   const SET = IS_MOBILE ? 'mobile' : 'desktop';
-  const FRAME_DIR = `/assets/frames/${SET}`;
+  const FRAME_DIR = `../assets/frames/${SET}`;
   const PRELOAD_COUNT = 70;
   const LERP = 0.18;
 
@@ -291,7 +291,7 @@
 
     let manifest;
     try {
-      const res = await fetch('/assets/frames/manifest.json');
+      const res = await fetch('../assets/frames/manifest.json');
       manifest = await res.json();
       N = manifest[SET];
       if (!N || !manifest.fps) throw new Error('manifest incomplet');
