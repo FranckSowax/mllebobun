@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../css/order.css">
 </head>
 <body class="is-loading">
 
@@ -90,19 +91,19 @@
       <h2>Trois bols au choix</h2>
     </div>
     <div class="choix-grid">
-      <article class="choix-card">
+      <article class="choix-card" data-id="boeuf">
         <div class="choix-media"><video src="../assets/video/choix/bobun-boeuf.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
         <p class="eyebrow">SIGNATURE</p>
         <h3>Bo Bún Bœuf</h3>
         <p>Vermicelles au bœuf citronnelle avec nems au poulet, cacahuètes, oignons frits et crudités.</p>
       </article>
-      <article class="choix-card">
+      <article class="choix-card" data-id="poulet">
         <div class="choix-media"><video src="../assets/video/choix/bobun-poulet.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
         <p class="eyebrow accent-ivoire">VOLAILLE</p>
         <h3>Bo Bún Poulet</h3>
         <p>Poulet mariné à la citronnelle, nems au poulet, cacahuètes, oignons frits et crudités.</p>
       </article>
-      <article class="choix-card">
+      <article class="choix-card" data-id="veggie">
         <div class="choix-media"><video src="../assets/video/choix/bobun-veggie.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
         <p class="eyebrow accent-menthe">VÉGÉTARIEN</p>
         <h3>Bo Bún Veggie</h3>
@@ -132,5 +133,6 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="main.js"></script>
+  <script src="../js/order.js" defer></script>
 </body>
 </html>
