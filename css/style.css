@@ -400,9 +400,9 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 24em;
+  max-width: 30em;
   padding-top: 76vh;
-  padding-left: 2vw;
+  padding-left: 1vw;
 }
 
 .st-text h3 {
