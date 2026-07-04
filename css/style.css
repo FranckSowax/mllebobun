@@ -446,7 +446,8 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 14px;
   text-align: center;
-  max-width: min(560px, 92vw);
+  width: min(720px, 92vw);
+  max-width: min(720px, 92vw);
   opacity: 0;
   visibility: hidden;
 }
@@ -700,7 +701,6 @@ a { color: inherit; text-decoration: none; }
 
   #cta-panel { bottom: 4vh; }
 
-  #cta-panel .cta-actions { flex-direction: column; align-items: stretch; }
 }
 
 /* ============ REDUCED MOTION ============ */
