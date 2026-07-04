@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../css/order.css">
 </head>
 <body class="is-loading">
 
@@ -76,25 +77,57 @@
   <!-- PISTE DE SCROLL (700vh) -->
   <div id="scrolltrack" aria-hidden="true"></div>
 
-  <!-- FOOTER -->
+  <!-- FOOTER — TROIS LOC LAC AU CHOIX -->
   <footer id="footer">
-    <div class="foot-grid">
-      <div class="foot-col">
-        <p class="eyebrow">ADRESSE</p>
-        <p>200 bis rue Malbec<br>33000 Bordeaux</p>
+    <div class="choix-head">
+      <p class="eyebrow">APRÈS LE COUVERCLE</p>
+      <h2>Trois Loc Lac au choix</h2>
+    </div>
+    <div class="choix-grid">
+      <article class="choix-card" data-id="loclac_boeuf">
+        <div class="choix-media"><video src="../assets/video/carte/loclac.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
+        <p class="eyebrow">SIGNATURE</p>
+        <h3>Loc Lac Bœuf</h3>
+        <p>Dés de bœuf marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.</p>
+      </article>
+      <article class="choix-card" data-id="loclac_poulet">
+        <div class="choix-media"><video src="../assets/video/carte/loclac-poulet.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
+        <p class="eyebrow accent-ivoire">VOLAILLE</p>
+        <h3>Loc Lac Poulet</h3>
+        <p>Émincés de poulet marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.</p>
+      </article>
+      <article class="choix-card" data-id="loclac_veggie">
+        <div class="choix-media"><video src="../assets/video/carte/loclac-veggie.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
+        <p class="eyebrow accent-menthe">VÉGÉTARIEN</p>
+        <h3>Loc Lac Veggie</h3>
+        <p>Tofu doré sauté au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.</p>
+      </article>
+    </div>
+    <div class="platform-row">
+      <a class="btn-brand btn-uber" href="https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw" target="_blank" rel="noopener" aria-label="Commander sur Uber Eats"><span>Uber</span><span class="eats">Eats</span></a>
+      <a class="btn-brand btn-deliveroo" href="https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun" target="_blank" rel="noopener" aria-label="Commander sur Deliveroo">deliveroo</a>
+      <a class="btn-brand btn-wa" href="https://wa.link/ghostkitchen" target="_blank" rel="noopener" aria-label="À emporter via WhatsApp">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        À emporter
+      </a>
+    </div>
+    <div class="ratings-row">
+      <div class="rating-card">
+        <span class="rating-logo rl-uber"><span>Uber</span><span class="eats">Eats</span></span>
+        <span class="rating-note">★ 4,7</span>
+        <span class="rating-txt">+ de 1500 commandes</span>
       </div>
-      <div class="foot-col">
-        <p class="eyebrow">HORAIRES</p>
-        <p>Lun–Ven 11h45–15h &amp; 18h30–22h<br>Week-end 18h–22h30</p>
-      </div>
-      <div class="foot-col">
-        <p class="eyebrow">CONTACT</p>
-        <p><a href="tel:+33557955439">+33 5 57 95 54 39</a><br><a href="mailto:mademoisellebobun@gmail.com">mademoisellebobun@gmail.com</a></p>
+      <div class="rating-card">
+        <span class="rating-logo rl-deliveroo">deliveroo</span>
+        <span class="rating-note">★ 4,6</span>
+        <span class="rating-txt">+ de 500 commandes</span>
       </div>
     </div>
     <div class="back-home-row">
       <a class="btn-brand btn-back" href="../">← RETOUR À L'ACCUEIL</a>
     </div>
+    <p class="foot-infos">200 BIS RUE MALBEC, 33000 BORDEAUX · LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>
+      <a href="tel:+33557955439">+33 5 57 95 54 39</a> · <a href="mailto:mademoisellebobun@gmail.com">MADEMOISELLEBOBUN@GMAIL.COM</a></p>
     <p class="foot-base">MADEMOISELLE BOBÙN · GHOST KITCHEN · BORDEAUX</p>
   </footer>
 
@@ -108,5 +141,13 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="main.js"></script>
+  <script>
+    window.ORDER_ITEMS = [
+      { id: 'loclac_boeuf', price: 1490 },
+      { id: 'loclac_poulet', price: 1390 },
+      { id: 'loclac_veggie', price: 1290 }
+    ];
+  </script>
+  <script src="../js/order.js" defer></script>
 </body>
 </html>

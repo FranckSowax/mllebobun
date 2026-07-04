@@ -7,7 +7,8 @@
 (() => {
   'use strict';
 
-  const ITEMS = [
+  /* la page peut définir son propre catalogue via window.ORDER_ITEMS */
+  const ITEMS = window.ORDER_ITEMS || [
     { id: 'boeuf', price: 1390 },
     { id: 'poulet', price: 1290 },
     { id: 'veggie', price: 1190 }
@@ -29,7 +30,9 @@
   const platformRow = document.querySelector('.platform-row');
   if (!grid || !platformRow) return;
 
-  const PAGE = location.pathname.includes('/bobunbeef') ? '/bobunbeef/' : '/';
+  const PAGE = location.pathname.includes('/bobunbeef') ? '/bobunbeef/'
+    : location.pathname.includes('/loclac') ? '/loclac/'
+    : '/';
 
   /* --- steppers dans chaque carte --- */
   ITEMS.forEach(item => {

@@ -49,6 +49,22 @@ const CATALOG = {
     amount: 1190,
     description: 'Nems végétariens, tofu doré à la citronnelle, cacahuètes, oignons frits et crudités.'
   },
+  /* loc lac */
+  loclac_boeuf: {
+    name: 'Loc Lac Bœuf',
+    amount: 1490,
+    description: 'Dés de bœuf marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
+  },
+  loclac_poulet: {
+    name: 'Loc Lac Poulet',
+    amount: 1390,
+    description: 'Émincés de poulet marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
+  },
+  loclac_veggie: {
+    name: 'Loc Lac Veggie',
+    amount: 1290,
+    description: 'Tofu doré sauté au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
+  },
   /* suppléments */
   sup_nems: { name: 'Supplément 2 nems', amount: 300, sup: true },
   sup_poulet: { name: 'Supplément poulet', amount: 300, sup: true },
@@ -57,7 +73,7 @@ const CATALOG = {
   sup_oeuf: { name: 'Supplément œuf au plat', amount: 100, sup: true }
 };
 
-const CANCEL_PATHS = ['/', '/bobunbeef/'];
+const CANCEL_PATHS = ['/', '/bobunbeef/', '/loclac/'];
 
 /* ---------- Persistance (JSONL sur volume) ---------- */
 
