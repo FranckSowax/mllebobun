@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commandes — Mademoiselle Bobùn</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%94%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --noir: #0B0805;
+      --noir2: #151009;
+      --ivoire: #F4EDE0;
+      --caramel: #E8912D;
+      --vert: #2ECC71;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Be Vietnam Pro', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--noir);
+      color: var(--ivoire);
+      font-family: var(--sans);
+      min-height: 100vh;
+      padding: 30px clamp(14px, 3vw, 44px) 60px;
+    }
+    :focus-visible { outline: 2px solid var(--caramel); outline-offset: 3px; border-radius: 4px; }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 26px;
+    }
+    h1 { font-weight: 900; font-size: clamp(1.4rem, 3vw, 2rem); }
+    h1 .dot {
+      display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+      background: #666; margin-left: 10px; vertical-align: middle;
+    }
+    h1 .dot.live { background: var(--vert); box-shadow: 0 0 10px var(--vert); }
+    .meta { font-family: var(--mono); font-size: .68rem; letter-spacing: .13em; color: rgba(244,237,224,.5); }
+
+    .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat {
+      background: var(--noir2); border: 1px solid rgba(244,237,224,.1);
+      border-radius: 14px; padding: 14px 22px; min-width: 150px;
+    }
+    .stat b { display: block; font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .stat span { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em; color: rgba(244,237,224,.5); }
+
+    .tablewrap { overflow-x: auto; border: 1px solid rgba(244,237,224,.1); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th {
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .14em; text-align: left;
+      color: var(--caramel); padding: 14px 16px; border-bottom: 1px solid rgba(244,237,224,.12);
+      background: var(--noir2); position: sticky; top: 0;
+    }
+    td { padding: 13px 16px; border-bottom: 1px solid rgba(244,237,224,.06); font-size: .92rem; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr.fresh td { animation: freshrow 2.4s ease-out; }
+    @keyframes freshrow { 0%, 40% { background: rgba(46, 204, 113, .18); } 100% { background: transparent; } }
+    .code { font-family: var(--mono); font-weight: 500; color: var(--caramel); white-space: nowrap; }
+    .items { font-weight: 300; line-height: 1.55; }
+    .note { font-weight: 300; font-style: italic; color: rgba(244,237,224,.72); max-width: 260px; }
+    .amount { font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .tel { font-family: var(--mono); font-size: .78rem; white-space: nowrap; }
+    .when { font-family: var(--mono); font-size: .72rem; color: rgba(244,237,224,.6); white-space: nowrap; }
+    .badge {
+      display: inline-block; font-family: var(--mono); font-size: .58rem; letter-spacing: .1em;
+      padding: 4px 10px; border-radius: 999px; background: rgba(46,204,113,.15);
+      color: var(--vert); border: 1px solid rgba(46,204,113,.4); white-space: nowrap;
+    }
+    .empty { padding: 60px 20px; text-align: center; color: rgba(244,237,224,.45); font-weight: 300; }
+
+    /* ---- Overlay vert clignotant : nouvelle commande payée ---- */
+    #flash {
+      position: fixed; inset: 0; z-index: 100;
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+      background: rgba(46, 204, 113, .32);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      text-align: center;
+      cursor: pointer;
+    }
+    #flash.on { display: flex; animation: flashblink .5s step-end 8; }
+    @keyframes flashblink {
+      0% { background: rgba(46, 204, 113, .45); }
+      50% { background: rgba(46, 204, 113, .12); }
+    }
+    #flash .big {
+      font-weight: 900; font-size: clamp(2rem, 6vw, 4rem);
+      text-shadow: 0 4px 30px rgba(0,0,0,.5);
+    }
+    #flash .code-big { font-family: var(--mono); font-size: clamp(1.4rem, 4vw, 2.4rem); color: #fff; }
+    #flash .hint { font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; color: rgba(255,255,255,.85); }
+
+    /* ---- écran de connexion ---- */
+    #login {
+      position: fixed; inset: 0; z-index: 90; background: var(--noir);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    }
+    #login input {
+      background: var(--noir2); border: 1px solid rgba(244,237,224,.2); border-radius: 10px;
+      color: var(--ivoire); font-family: var(--mono); font-size: 1rem; letter-spacing: .1em;
+      padding: 13px 18px; width: min(300px, 80vw); text-align: center;
+    }
+    #login button {
+      background: var(--caramel); color: var(--noir); border: none; border-radius: 999px;
+      font-weight: 800; font-size: .95rem; padding: 13px 30px; cursor: pointer; font-family: var(--sans);
+    }
+    #login .err { color: #ff9d7a; font-size: .85rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+
+  <div id="login">
+    <p class="meta">MADEMOISELLE BOBÙN · DASHBOARD COMMANDES</p>
+    <input id="key" type="password" placeholder="CLÉ D'ACCÈS" autocomplete="current-password">
+    <button id="enter">Entrer</button>
+    <p class="err" id="login-err"></p>
+  </div>
+
+  <header hidden>
+    <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span></h1>
+    <p class="meta" id="today-meta">—</p>
+  </header>
+
+  <div class="stats" hidden>
+    <div class="stat"><b id="st-count">0</b><span>COMMANDES AUJOURD'HUI</span></div>
+    <div class="stat"><b id="st-total">0 €</b><span>ENCAISSÉ AUJOURD'HUI</span></div>
+    <div class="stat"><b id="st-bols">0</b><span>BOLS AUJOURD'HUI</span></div>
+  </div>
+
+  <div class="tablewrap" hidden>
+    <table>
+      <thead>
+        <tr><th>HEURE</th><th>CODE</th><th>DÉTAIL</th><th>NOTE</th><th>CLIENT</th><th>MONTANT</th><th>STATUT</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>Aucune commande pour l'instant — le wok attend.</div>
+  </div>
+
+  <div id="flash" role="alert">
+    <div class="big">🍜 NOUVELLE COMMANDE</div>
+    <div class="code-big" id="flash-code"></div>
+    <div class="hint">TOUCHER POUR FERMER</div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const $ = s => document.querySelector(s);
+      let KEY = localStorage.getItem('bobun_dash_key') || '';
+      let known = new Set();
+
+      const eur = c => (c / 100).toFixed(2).replace('.', ',') + ' €';
+      const hhmm = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const isToday = iso => new Date(iso).toDateString() === new Date().toDateString();
+
+      function rowHtml(o, fresh) {
+        const items = o.items.map(i => `${i.qty} × ${i.name}`).join('<br>');
+        const d = new Date(o.date);
+        const when = isToday(o.date) ? hhmm(o.date) : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + hhmm(o.date);
+        return `<tr class="${fresh ? 'fresh' : ''}" data-id="${o.sessionId}">
+          <td class="when">${when}</td>
+          <td class="code">${o.code}</td>
+          <td class="items">${items}</td>
+          <td class="note">${o.note ? o.note.replace(/</g, '&lt;') : '—'}</td>
+          <td class="tel">${o.phone || '—'}${o.email ? '<br>' + o.email.replace(/</g, '&lt;') : ''}</td>
+          <td class="amount">${eur(o.amount)}</td>
+          <td><span class="badge">PAYÉE</span></td>
+        </tr>`;
+      }
+
+      function refreshStats(list) {
+        const today = list.filter(o => isToday(o.date));
+        $('#st-count').textContent = today.length;
+        $('#st-total').textContent = eur(today.reduce((s, o) => s + o.amount, 0));
+        $('#st-bols').textContent = today.reduce((s, o) => s + o.items.reduce((q, i) => q + i.qty, 0), 0);
+        $('#today-meta').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+      }
+
+      let all = [];
+
+      function renderAll(list) {
+        all = list;
+        $('#rows').innerHTML = list.map(o => rowHtml(o, false)).join('');
+        $('#empty').hidden = list.length > 0;
+        list.forEach(o => known.add(o.sessionId));
+        refreshStats(list);
+      }
+
+      function addOrder(o) {
+        if (known.has(o.sessionId)) return;
+        known.add(o.sessionId);
+        all.unshift(o);
+        $('#rows').insertAdjacentHTML('afterbegin', rowHtml(o, true));
+        $('#empty').hidden = true;
+        refreshStats(all);
+        // overlay vert clignotant
+        $('#flash-code').textContent = o.code + ' · ' + eur(o.amount);
+        const fl = $('#flash');
+        fl.classList.remove('on');
+        void fl.offsetWidth;
+        fl.classList.add('on');
+        clearTimeout(fl._t);
+        fl._t = setTimeout(() => fl.classList.remove('on'), 10000);
+      }
+
+      $('#flash').addEventListener('click', () => $('#flash').classList.remove('on'));
+
+      let es = null;
+      function connectStream() {
+        if (es) es.close();
+        es = new EventSource('/api/orders/stream?key=' + encodeURIComponent(KEY));
+        es.onopen = () => $('#live-dot').classList.add('live');
+        es.onerror = () => $('#live-dot').classList.remove('live');
+        es.addEventListener('order', e => { try { addOrder(JSON.parse(e.data)); } catch (err) { /* ignore */ } });
+      }
+
+      async function load() {
+        const res = await fetch('/api/orders', { headers: { 'x-dash-key': KEY } });
+        if (!res.ok) throw new Error('clé');
+        const data = await res.json();
+        renderAll(data.orders || []);
+      }
+
+      async function start() {
+        try {
+          await load();
+        } catch (e) {
+          localStorage.removeItem('bobun_dash_key');
+          $('#login').style.display = 'flex';
+          $('#login-err').textContent = KEY ? 'Clé refusée.' : '';
+          return;
+        }
+        $('#login').style.display = 'none';
+        document.querySelectorAll('[hidden]').forEach(el => { if (el.id !== 'empty' || all.length === 0) el.hidden = false; });
+        $('#empty').hidden = all.length > 0;
+        connectStream();
+        setInterval(() => load().catch(() => {}), 60000); // filet de sécurité
+      }
+
+      $('#enter').addEventListener('click', () => {
+        KEY = $('#key').value.trim();
+        localStorage.setItem('bobun_dash_key', KEY);
+        start();
+      });
+      $('#key').addEventListener('keydown', e => { if (e.key === 'Enter') $('#enter').click(); });
+
+      if (KEY) start(); else $('#login').style.display = 'flex';
+    })();
+  </script>
+</body>
+</html>

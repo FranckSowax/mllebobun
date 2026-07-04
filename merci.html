@@ -49,6 +49,12 @@
       font-weight: 600; font-size: .92rem; transition: border-color .25s, color .25s;
     }
     .back:hover { border-color: var(--caramel); color: var(--caramel); }
+    .pickup {
+      font-family: var(--mono); font-size: .8rem; letter-spacing: .14em;
+      border: 1px solid rgba(232, 145, 45, .5); border-radius: 12px;
+      padding: 12px 22px; color: rgba(244, 237, 224, .85);
+    }
+    .pickup strong { color: var(--caramel); font-size: 1.15rem; }
   </style>
 </head>
 <body>
@@ -56,11 +62,26 @@
     <div class="ring" aria-hidden="true">🍜</div>
     <p class="eyebrow">COMMANDE CONFIRMÉE · À EMPORTER</p>
     <h1>Merci ! Le wok s'allume.</h1>
+    <p id="pickup" class="pickup" hidden>CODE DE RETRAIT&nbsp;: <strong id="pickup-code"></strong></p>
     <p class="lead">Votre paiement est bien passé — on monte votre bol à la minute.
-      Récupérez-le au <strong>200 bis rue Malbec, 33000 Bordeaux</strong>.
+      Votre code de retrait et son QR code arrivent sur <strong>WhatsApp</strong>.
+      Récupérez votre bol au <strong>200 bis rue Malbec, 33000 Bordeaux</strong>.
       Un doute, une précision&nbsp;? Appelez le <a href="tel:+33557955439">05&nbsp;57&nbsp;95&nbsp;54&nbsp;39</a>.</p>
     <p class="addr">LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>MADEMOISELLE BOBÙN · GHOST KITCHEN · BORDEAUX</p>
     <a class="back" href="/">← Retour au site</a>
   </main>
+  <script>
+    (async () => {
+      const id = new URLSearchParams(location.search).get('session_id');
+      if (!id) return;
+      try {
+        const d = await (await fetch('/api/session/' + encodeURIComponent(id))).json();
+        if (d.code) {
+          document.getElementById('pickup-code').textContent = d.code;
+          document.getElementById('pickup').hidden = false;
+        }
+      } catch (e) { /* silencieux */ }
+    })();
+  </script>
 </body>
 </html>
