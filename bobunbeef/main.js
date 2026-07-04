@@ -54,6 +54,8 @@
     { el: null, id: '#ui-hero',  from: 0,   to: 10 },
     { el: null, id: '#ui-card1', from: 20,  to: 44 },
     { el: null, id: '#ui-card2', from: 53,  to: 117 },
+    { el: null, id: '#ui-card3', from: 122, to: 157 },
+    { el: null, id: '#ui-card4', from: 161, to: 196 },
     { el: null, id: '#ui-cta',   from: 201, to: 9999 }
   ];
 
@@ -206,12 +208,20 @@
 
     // un seul ScrollTrigger global sur la piste
     let targetFrame = 0;
-    ScrollTrigger.create({
+    const track = ScrollTrigger.create({
       trigger: '#scrolltrack',
       start: 'top top',
       end: 'bottom bottom',
       scrub: .5,
       onUpdate(self) { targetFrame = progressToFrame(self.progress); }
+    });
+    window.__dbg = () => ({
+      p: +track.progress.toFixed(4),
+      start: track.start,
+      end: track.end,
+      target: +targetFrame.toFixed(1),
+      drawn: drawnIndex,
+      y: Math.round(window.scrollY)
     });
 
     // tint interpolé sur la progression globale
