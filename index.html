@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mademoiselle Bobùn — Du feu au bol | Bo Bún Bœuf, Bordeaux</title>
+  <meta name="description" content="Vermicelles au bœuf citronnelle avec nems au poulet, cacahuètes, oignons frits et crudités. Le Bo Bún Bœuf de Mademoiselle Bobùn, ghost kitchen à Bordeaux — à emporter, en Click'n'Collect ou en livraison.">
+  <meta property="og:title" content="Mademoiselle Bobùn — Du feu au bol | Bo Bún Bœuf, Bordeaux">
+  <meta property="og:description" content="Vermicelles au bœuf citronnelle avec nems au poulet, cacahuètes, oignons frits et crudités. Suivez la descente du bol, de l'allumage du wok au couvercle.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mademoisellebobun.com/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="is-loading">
+
+  <!-- LOADER -->
+  <div id="loader" role="status" aria-label="Chargement">
+    <div class="flame" aria-hidden="true">
+      <span class="flame-core"></span>
+      <span class="flame-halo"></span>
+    </div>
+    <p class="loader-label">ALLUMAGE DU WOK…</p>
+    <div class="loader-bar"><span id="loader-fill"></span></div>
+  </div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a class="nav-brand" href="#hero">Mademoiselle&nbsp;Bobùn</a>
+    <a class="nav-pill" href="https://wa.link/ghostkitchen" target="_blank" rel="noopener">CLICK'N'COLLECT&nbsp;→</a>
+  </nav>
+
+  <main>
+
+    <!-- B. HERO — IGNITION -->
+    <section id="hero">
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+      <div class="hero-copy">
+        <p class="eyebrow">BORDEAUX · CUISINE VIETNAMIENNE</p>
+        <h1>Mademoiselle <span class="caramel">Bobùn</span></h1>
+        <p class="hero-sub">Tout commence par une flamme. Faites défiler&nbsp;— et suivez le bol.</p>
+      </div>
+      <div class="hero-scrollhint" aria-hidden="true"><span></span></div>
+    </section>
+
+    <!-- C. TIMELINE — LA DESCENTE DU BOL -->
+    <section id="timeline">
+      <svg id="noodle-svg" aria-hidden="true">
+        <path id="noodle-base" fill="none"></path>
+        <path id="noodle-progress" fill="none"></path>
+        <g id="noodle-dots"></g>
+      </svg>
+
+      <div id="bowl-rail" aria-hidden="true">
+        <div id="bowl-stick">
+          <div id="bowl-ring"></div>
+          <div id="bowl">
+            <img src="assets/bowl/bowl_1.webp" class="bowl-img on" data-state="1" alt="">
+            <img src="assets/bowl/bowl_2.webp" class="bowl-img" data-state="2" alt="">
+            <img src="assets/bowl/bowl_3.webp" class="bowl-img" data-state="3" alt="">
+            <img src="assets/bowl/bowl_4.webp" class="bowl-img" data-state="4" alt="">
+            <img src="assets/bowl/bowl_5.webp" class="bowl-img" data-state="5" alt="">
+            <img src="assets/bowl/bowl_6.webp" class="bowl-img" data-state="6" alt="">
+          </div>
+          <div id="burst"></div>
+        </div>
+      </div>
+
+      <div class="timeline-intro">
+        <p class="eyebrow">LA DESCENTE DU BOL</p>
+        <h2>Cinq étapes. Un seul bol.</h2>
+      </div>
+
+      <article class="station" data-clip="st01" data-state="2">
+        <div class="st-media"><canvas aria-hidden="true"></canvas></div>
+        <div class="st-text">
+          <p class="eyebrow">ÉTAPE 01 — LES VERMICELLES</p>
+          <h3>Souples, brillants, brûlants</h3>
+          <p class="st-desc">Des vermicelles de riz plongés à la minute, égouttés d'un geste, encore fumants quand ils touchent le fond du bol.</p>
+        </div>
+      </article>
+
+      <article class="station" data-clip="st02" data-state="3">
+        <div class="st-media"><canvas aria-hidden="true"></canvas></div>
+        <div class="st-text">
+          <p class="eyebrow">ÉTAPE 02 — LES CRUDITÉS</p>
+          <h3>Fraîcheur en julienne</h3>
+          <p class="st-desc">Carotte, concombre, salade croquante&nbsp;: taillés fins, jamais à l'avance. Le froid qui répond au chaud.</p>
+        </div>
+      </article>
+
+      <article class="station" data-clip="st03" data-state="4">
+        <div class="st-media"><canvas aria-hidden="true"></canvas></div>
+        <div class="st-text">
+          <p class="eyebrow">ÉTAPE 03 — LE FEU</p>
+          <h3>Bœuf citronnelle, saisi au wok</h3>
+          <p class="st-desc">La flamme lèche l'acier, le bœuf mariné à la citronnelle caramélise en quelques secondes. C'est là que tout se joue.</p>
+        </div>
+      </article>
+
+      <article class="station" data-clip="st04" data-state="5">
+        <div class="st-media"><canvas aria-hidden="true"></canvas></div>
+        <div class="st-text">
+          <p class="eyebrow">ÉTAPE 04 — LES NEMS</p>
+          <h3>Chả giò au poulet, dorés à cœur</h3>
+          <p class="st-desc">Roulés serrés, frits jusqu'au blond profond. Ils craquent sous la dent avant de fondre.</p>
+        </div>
+      </article>
+
+      <article class="station" data-clip="st05" data-state="6">
+        <div class="st-media"><canvas aria-hidden="true"></canvas></div>
+        <div class="st-text">
+          <p class="eyebrow">ÉTAPE 05 — LE CROQUANT</p>
+          <h3>Cacahuètes, oignons frits, herbes</h3>
+          <p class="st-desc">La pluie finale&nbsp;: cacahuètes torréfiées, oignons frits, menthe et coriandre. Le bol est complet.</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- D. FINALE — LE COUVERCLE -->
+    <section id="finale">
+      <canvas id="finale-canvas" aria-hidden="true"></canvas>
+      <div id="cta-panel" class="glass">
+        <p class="eyebrow">750 ML · PRÊT À EMPORTER</p>
+        <h2>Bo Bún Bœuf</h2>
+        <p class="cta-desc">Vermicelles au bœuf citronnelle avec nems au poulet, cacahuètes, oignons frits et crudités.</p>
+        <div class="cta-actions">
+          <a class="btn btn-primary" href="https://mademoisellebobun.com/product/bo-bun-boeuf/" target="_blank" rel="noopener">Commander maintenant</a>
+          <a class="btn btn-ghost" href="https://wa.link/ghostkitchen" target="_blank" rel="noopener">Click'n'Collect WhatsApp</a>
+        </div>
+        <p class="cta-mention">AUSSI SUR DELIVEROO &amp; UBER EATS</p>
+      </div>
+    </section>
+
+    <!-- E. FOOTER -->
+    <footer id="footer">
+      <div class="foot-grid">
+        <div class="foot-col">
+          <p class="eyebrow">ADRESSE</p>
+          <p>200 bis rue Malbec<br>33000 Bordeaux</p>
+        </div>
+        <div class="foot-col">
+          <p class="eyebrow">HORAIRES</p>
+          <p>Lun–Ven 11h45–15h &amp; 18h30–22h<br>Week-end 18h–22h30</p>
+        </div>
+        <div class="foot-col">
+          <p class="eyebrow">CONTACT</p>
+          <p><a href="tel:+33557955439">+33 5 57 95 54 39</a><br><a href="mailto:mademoisellebobun@gmail.com">mademoisellebobun@gmail.com</a></p>
+        </div>
+      </div>
+      <p class="foot-base">MADEMOISELLE BOBÙN · GHOST KITCHEN · BORDEAUX</p>
+    </footer>
+
+  </main>
+
+  <!-- CINEMA LAYERS -->
+  <div id="tint" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="grain" aria-hidden="true"></div>
+  <div id="ambient" aria-hidden="true"></div>
+  <div id="steam" aria-hidden="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
