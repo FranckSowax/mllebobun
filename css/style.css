@@ -871,3 +871,13 @@ h1 { color: #fff; }
   .carte-grid { grid-template-columns: 1fr; }
   .nav-logo { height: 38px; width: 38px; }
 }
+
+.carte-lien {
+  display: block;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .14em;
+  color: var(--caramel);
+  margin-top: 8px;
+}
