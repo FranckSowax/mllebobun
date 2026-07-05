@@ -77,6 +77,33 @@
     }
     .empty { padding: 60px 20px; text-align: center; color: rgba(244,237,224,.45); font-weight: 300; }
 
+    /* ---- imprimante bluetooth ---- */
+    .print-ctl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .bt-btn {
+      font-family: var(--mono); font-size: .6rem; letter-spacing: .12em;
+      background: transparent; color: rgba(244,237,224,.75);
+      border: 1px solid rgba(244,237,224,.3); border-radius: 999px;
+      padding: 9px 16px; cursor: pointer; transition: border-color .25s, color .25s;
+      white-space: nowrap;
+    }
+    .bt-btn:hover { border-color: var(--caramel); color: var(--caramel); }
+    .bt-btn.on { color: var(--vert); border-color: rgba(46,204,113,.6); }
+    .bt-btn.on::before { content: '● '; }
+    .autop {
+      font-family: var(--mono); font-size: .58rem; letter-spacing: .12em;
+      color: rgba(244,237,224,.55); display: inline-flex; align-items: center; gap: 7px;
+      cursor: pointer; user-select: none;
+    }
+    .autop input { accent-color: var(--caramel); }
+    .print-btn {
+      background: transparent; border: 1px solid rgba(244,237,224,.22);
+      border-radius: 9px; font-size: .95rem; padding: 6px 10px; cursor: pointer;
+      transition: border-color .25s, transform .15s;
+    }
+    .print-btn:hover { border-color: var(--caramel); }
+    .print-btn:active { transform: scale(.92); }
+    .print-btn.done { border-color: rgba(46,204,113,.6); }
+
     /* ---- Overlay vert clignotant : nouvelle commande payée ---- */
     #flash {
       position: fixed; inset: 0; z-index: 100;
@@ -127,7 +154,11 @@
 
   <header hidden>
     <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span></h1>
-    <p class="meta" id="today-meta">—</p>
+    <div class="print-ctl">
+      <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
+      <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
+      <p class="meta" id="today-meta">—</p>
+    </div>
   </header>
 
   <div class="stats" hidden>
@@ -139,7 +170,7 @@
   <div class="tablewrap" hidden>
     <table>
       <thead>
-        <tr><th>HEURE</th><th>CODE</th><th>DÉTAIL</th><th>NOTE</th><th>CLIENT</th><th>MONTANT</th><th>STATUT</th></tr>
+        <tr><th>HEURE</th><th>CODE</th><th>DÉTAIL</th><th>NOTE</th><th>CLIENT</th><th>MONTANT</th><th>STATUT</th><th title="Imprimer">🖨</th></tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
@@ -175,6 +206,7 @@
           <td class="tel">${o.phone || '—'}${o.email ? '<br>' + o.email.replace(/</g, '&lt;') : ''}</td>
           <td class="amount">${eur(o.amount)}</td>
           <td><span class="badge">PAYÉE</span></td>
+          <td><button class="print-btn" data-sid="${o.sessionId}" title="Imprimer le ticket" aria-label="Imprimer la commande ${o.code}">🖨</button></td>
         </tr>`;
       }
 
@@ -211,9 +243,162 @@
         fl.classList.add('on');
         clearTimeout(fl._t);
         fl._t = setTimeout(() => fl.classList.remove('on'), 10000);
+        // impression automatique du ticket (si imprimante connectée)
+        if ($('#autoprint').checked && btChar && !printed.has(o.sessionId)) {
+          printed.add(o.sessionId);
+          printOrder(o, document.querySelector(`.print-btn[data-sid="${o.sessionId}"]`));
+        }
       }
 
       $('#flash').addEventListener('click', () => $('#flash').classList.remove('on'));
+
+      /* ============================================================
+         IMPRIMANTE BLUETOOTH (ESC/POS via Web Bluetooth — Chrome)
+         ============================================================ */
+
+      const btBtn = $('#bt-connect');
+      let btChar = null;          // characteristic d'écriture
+      let btDevice = null;
+      const printed = new Set(); // anti double impression auto
+
+      // services BLE courants des imprimantes thermiques
+      const BT_SERVICES = [
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+        '0000ffe0-0000-1000-8000-00805f9b34fb',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+      ];
+
+      function btStatus(on, label) {
+        btBtn.classList.toggle('on', on);
+        btBtn.textContent = label || (on ? '🖨 IMPRIMANTE CONNECTÉE' : '🖨 CONNECTER L\'IMPRIMANTE');
+      }
+
+      async function findWriteChar(server) {
+        const services = await server.getPrimaryServices();
+        for (const svc of services) {
+          let chars = [];
+          try { chars = await svc.getCharacteristics(); } catch (e) { continue; }
+          for (const ch of chars) {
+            if (ch.properties.writeWithoutResponse || ch.properties.write) return ch;
+          }
+        }
+        return null;
+      }
+
+      async function btConnect() {
+        if (!navigator.bluetooth) {
+          alert('Bluetooth non disponible dans ce navigateur.\nUtilisez Chrome sur Android ou sur ordinateur (pas Safari iPhone).');
+          return;
+        }
+        try {
+          btStatus(false, '🖨 RECHERCHE…');
+          btDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: BT_SERVICES
+          });
+          btDevice.addEventListener('gattserverdisconnected', () => { btChar = null; btStatus(false); });
+          const server = await btDevice.gatt.connect();
+          btChar = await findWriteChar(server);
+          if (!btChar) throw new Error('caractéristique d\'écriture introuvable');
+          btStatus(true);
+        } catch (e) {
+          btChar = null;
+          btStatus(false);
+          if (e.name !== 'NotFoundError') alert('Connexion imprimante impossible : ' + e.message);
+        }
+      }
+
+      btBtn.addEventListener('click', () => {
+        if (btChar) { try { btDevice.gatt.disconnect(); } catch (e) {} btChar = null; btStatus(false); }
+        else btConnect();
+      });
+
+      /* ---- ticket ESC/POS (58mm, 32 colonnes) ---- */
+
+      const ascii = s => String(s || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[œŒ]/g, 'oe').replace(/€/g, 'EUR')
+        .replace(/[«»“”]/g, '"').replace(/[’‘]/g, "'")
+        .replace(/[^\x20-\x7E\n]/g, '');
+
+      function line2(left, right, w = 32) {
+        left = ascii(left); right = ascii(right);
+        const space = Math.max(1, w - left.length - right.length);
+        return left + ' '.repeat(space) + right + '\n';
+      }
+
+      function buildTicket(o) {
+        const b = [];
+        const push = (...xs) => b.push(...xs);
+        const txt = s => { for (const c of ascii(s)) push(c.charCodeAt(0)); };
+        const ESC = 0x1B, GS = 0x1D;
+        push(ESC, 0x40);                          // init
+        push(ESC, 0x61, 1);                       // centré
+        push(ESC, 0x45, 1); txt('MADEMOISELLE BOBUN\n'); push(ESC, 0x45, 0);
+        txt('GHOST KITCHEN - BORDEAUX\n');
+        txt('--------------------------------\n');
+        push(GS, 0x21, 0x11);                     // double taille
+        txt(o.code + '\n');
+        push(GS, 0x21, 0x00);
+        const d = new Date(o.date);
+        txt(d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '\n');
+        txt('--------------------------------\n');
+        push(ESC, 0x61, 0);                       // gauche
+        o.items.forEach(i => {
+          txt(line2(`${i.qty} x ${i.name}`, eur(i.amount).replace('€', 'E')));
+        });
+        txt('--------------------------------\n');
+        push(ESC, 0x45, 1);
+        txt(line2('TOTAL', eur(o.amount).replace('€', 'E')));
+        push(ESC, 0x45, 0);
+        if (o.note) {
+          txt('--------------------------------\n');
+          push(ESC, 0x45, 1); txt('NOTE :\n'); push(ESC, 0x45, 0);
+          txt(ascii(o.note) + '\n');
+        }
+        if (o.phone) txt('\nClient : ' + ascii(o.phone) + '\n');
+        push(ESC, 0x61, 1);
+        txt('\nA EMPORTER - PAYEE EN LIGNE\nMerci !\n');
+        push(ESC, 0x64, 4);                       // avance papier
+        push(GS, 0x56, 0x42, 0x00);               // coupe partielle (si massicot)
+        return new Uint8Array(b);
+      }
+
+      async function btWrite(bytes) {
+        const CHUNK = 100;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          const part = bytes.slice(i, i + CHUNK);
+          if (btChar.properties.writeWithoutResponse) await btChar.writeValueWithoutResponse(part);
+          else await btChar.writeValue(part);
+          await new Promise(r => setTimeout(r, 25));
+        }
+      }
+
+      async function printOrder(o, btn) {
+        if (!btChar) {
+          if (btn) alert('Imprimante non connectée — cliquez sur « Connecter l\'imprimante ».');
+          return false;
+        }
+        try {
+          await btWrite(buildTicket(o));
+          if (btn) { btn.classList.add('done'); setTimeout(() => btn.classList.remove('done'), 2000); }
+          return true;
+        } catch (e) {
+          console.error('impression :', e);
+          if (btn) alert('Échec impression : ' + e.message);
+          return false;
+        }
+      }
+
+      /* icône 🖨 sur chaque ligne */
+      $('#rows').addEventListener('click', e => {
+        const btn = e.target.closest('.print-btn');
+        if (!btn) return;
+        const o = all.find(x => x.sessionId === btn.dataset.sid);
+        if (o) printOrder(o, btn);
+      });
 
       let es = null;
       function connectStream() {
