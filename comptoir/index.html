@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mademoiselle Bobùn — Bo Bún, Loc Lac &amp; Nems à Bordeaux · Click'n'Collect</title>
+  <meta name="description" content="Le comptoir de Mademoiselle Bobùn : Bo Bún, Loc Lac au riz rouge maison, Nems &amp; Rouleaux de printemps. Ghost kitchen à Bordeaux — Click'n'Collect, Deliveroo, Uber Eats.">
+  <meta property="og:title" content="Mademoiselle Bobùn — Bo Bún, Loc Lac &amp; Nems à Bordeaux">
+  <meta property="og:description" content="Un plat, un écran. Faites défiler le comptoir : Bo Bún, Loc Lac, Nems &amp; Rouleaux.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/plats/bobun-boeuf.webp">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/comptoir/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "Mademoiselle Bobùn",
+    "servesCuisine": "Vietnamese",
+    "telephone": "+33557955439",
+    "email": "mademoisellebobun@gmail.com",
+    "url": "https://mademoisellebobun.com/",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "200 bis rue Malbec",
+      "postalCode": "33000",
+      "addressLocality": "Bordeaux",
+      "addressCountry": "FR"
+    },
+    "openingHoursSpecification": [
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "11:45", "closes": "15:00" },
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "18:30", "closes": "22:00" },
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday","Sunday"], "opens": "18:00", "closes": "22:30" }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a class="nav-brand" href="/"><img class="nav-logo" src="/assets/logo-blanc.png" alt=""><span class="nav-name">Mademoiselle<br>Bobùn</span></a>
+    <span id="badge-ouvert" class="badge-ouvert" aria-live="polite">…</span>
+  </nav>
+
+  <!-- barre de progression vermicelle + compteur -->
+  <div id="rail" aria-hidden="true">
+    <svg id="rail-svg" viewBox="0 0 12 400" preserveAspectRatio="none">
+      <path id="rail-base" d="" fill="none"></path>
+      <path id="rail-prog" d="" fill="none"></path>
+    </svg>
+    <p id="rail-count" class="eyebrow">— / —</p>
+  </div>
+
+  <!-- points de navigation -->
+  <nav id="dots" aria-label="Aller à un plat"></nav>
+
+  <main id="comptoir">
+
+    <!-- INTRO -->
+    <section class="plat-screen intro" id="intro">
+      <div class="intro-in">
+        <p class="eyebrow">BORDEAUX · CUISINE VIETNAMIENNE · GHOST KITCHEN</p>
+        <h1>Mademoiselle <span class="bambou">Bobùn</span></h1>
+        <p class="intro-sub">Neuf plats, un comptoir. Faites défiler&nbsp;— chaque bol vous attend.</p>
+        <div class="scrollhint" aria-hidden="true"><span></span></div>
+      </div>
+    </section>
+
+    <!-- les 9 plats sont générés par main.js -->
+
+    <!-- FIN / FOOTER -->
+    <section class="plat-screen fin" id="fin">
+      <div class="fin-in">
+        <p class="eyebrow">COMMANDER</p>
+        <h2>On allume le wok&nbsp;?</h2>
+        <div class="platform-row">
+          <a class="btn-brand btn-uber" href="https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw" target="_blank" rel="noopener" aria-label="Commander sur Uber Eats"><span>Uber</span><span class="eats">Eats</span></a>
+          <a class="btn-brand btn-deliveroo" href="https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun" target="_blank" rel="noopener" aria-label="Commander sur Deliveroo">deliveroo</a>
+        </div>
+        <div class="ratings-row">
+          <div class="rating-card">
+            <span class="rating-logo rl-uber"><span>Uber</span><span class="eats">Eats</span></span>
+            <span class="rating-note">★ 4,7</span>
+            <span class="rating-txt">+ de 1500 commandes</span>
+          </div>
+          <div class="rating-card">
+            <span class="rating-logo rl-deliveroo">deliveroo</span>
+            <span class="rating-note">★ 4,6</span>
+            <span class="rating-txt">+ de 500 commandes</span>
+          </div>
+        </div>
+        <p class="foot-films"><a href="/bobunbeef/">LE FILM BO BÚN →</a> · <a href="/loclac/">LE FILM LOC LAC →</a></p>
+        <p class="foot-infos">200 BIS RUE MALBEC, 33000 BORDEAUX · LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>
+          <a href="tel:+33557955439">+33 5 57 95 54 39</a> · <a href="mailto:mademoisellebobun@gmail.com">MADEMOISELLEBOBUN@GMAIL.COM</a></p>
+        <p class="foot-base">MADEMOISELLE BOBÙN · GHOST KITCHEN · BORDEAUX</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="grain" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+
+  <script src="/comptoir/main.js"></script>
+</body>
+</html>
