@@ -237,7 +237,10 @@ a { color: inherit; text-decoration: none; }
 
 .plat-media {
   justify-self: center;
-  width: min(62vh, 42vw);
+  /* jamais plus large que sa colonne : le texte reste intouchable */
+  width: min(62vh, 42vw, 100%);
+  max-width: 100%;
+  z-index: 1;
   aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;
@@ -273,6 +276,8 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   gap: 15px;
   max-width: 30em;
+  position: relative;
+  z-index: 2;
 }
 
 .plat-txt .eyebrow { color: var(--acc, var(--caramel)); }
