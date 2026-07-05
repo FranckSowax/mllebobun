@@ -19,6 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const Stripe = require('stripe');
 const QRCode = require('qrcode');
@@ -29,6 +30,9 @@ const WHAPI_TOKEN = process.env.WHAPI_TOKEN || '';
 const WHAPI_API_URL = (process.env.WHAPI_API_URL || 'https://gate.whapi.cloud').replace(/\/$/, '');
 const TEAM_WHATSAPP = (process.env.TEAM_WHATSAPP || '').replace(/\D/g, '');
 const DASHBOARD_KEY = process.env.DASHBOARD_KEY || '';
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+// jeton dérivé pour sécuriser le webhook Whapi entrant
+const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
 
@@ -162,6 +166,8 @@ function frPhoneToWa(phone) {
   return digits;
 }
 
+const MAPS_URL = 'https://www.google.com/maps/dir/?api=1&destination=200+bis+rue+Malbec+33000+Bordeaux&travelmode=driving';
+
 async function sendCustomerWhatsApp(order) {
   const to = frPhoneToWa(order.phone);
   if (!to) { console.log('whatsapp client: pas de téléphone'); return; }
@@ -178,6 +184,29 @@ async function sendCustomerWhatsApp(order) {
   } catch (e) {
     console.error(e.message);
     await whapi('/messages/text', { to, body: caption }).catch(err => console.error(err.message));
+  }
+  await sendDriveProposal(order, to);
+}
+
+/* proposition Drive : bouton interactif WhatsApp, repli texte */
+async function sendDriveProposal(order, to) {
+  const body =
+    `🚗 *Option Drive* — on dépose votre commande à votre voiture !\n\n` +
+    `Garez-vous à proximité du 200 bis rue Malbec, puis touchez le bouton ` +
+    `ci-dessous (ou répondez « GARÉ » suivi de votre véhicule).\n\n` +
+    `🧭 Itinéraire : ${MAPS_URL}`;
+  try {
+    await whapi('/messages/interactive', {
+      to,
+      type: 'button',
+      body: { text: body },
+      action: {
+        buttons: [{ type: 'quick_reply', title: '🚗 Je suis garé devant', id: `drive_${order.sessionId}` }]
+      }
+    });
+  } catch (e) {
+    console.error('drive interactif:', e.message);
+    await whapi('/messages/text', { to, body }).catch(err => console.error(err.message));
   }
 }
 
@@ -324,11 +353,19 @@ app.get('/api/session/:id', async (req, res) => {
 
 /* ---------- Option Drive : le client est garé devant ---------- */
 
+function markDrive(order, vehicle) {
+  const cleanVehicle = String(vehicle || '').slice(0, 120).trim() || 'véhicule non décrit';
+  const evt = { _evt: 'drive', sessionId: order.sessionId, vehicle: cleanVehicle, date: new Date().toISOString() };
+  const stored = orders.find(o => o.sessionId === order.sessionId);
+  if (stored) stored.drive = { vehicle: cleanVehicle, at: evt.date };
+  appendLine(evt);
+  broadcast('drive', { code: order.code, vehicle: cleanVehicle, sessionId: order.sessionId, at: evt.date });
+}
+
 app.post('/api/drive', async (req, res) => {
   try {
     const { session_id, vehicle } = req.body || {};
     if (!/^cs_(live|test)_/.test(String(session_id || ''))) return res.status(400).json({ error: 'session invalide' });
-    const cleanVehicle = String(vehicle || '').slice(0, 120).trim() || 'véhicule non décrit';
     let order = orders.find(o => o.sessionId === session_id);
     if (!order && stripe) {
       // le webhook peut ne pas être encore arrivé : on vérifie chez Stripe
@@ -341,15 +378,86 @@ app.post('/api/drive', async (req, res) => {
       }
     }
     if (!order) return res.status(404).json({ error: 'commande introuvable' });
-    const evt = { _evt: 'drive', sessionId: session_id, vehicle: cleanVehicle, date: new Date().toISOString() };
-    const stored = orders.find(o => o.sessionId === session_id);
-    if (stored) stored.drive = { vehicle: cleanVehicle, at: evt.date };
-    appendLine(evt);
-    broadcast('drive', { code: order.code, vehicle: cleanVehicle, sessionId: session_id, at: evt.date });
+    markDrive(order, vehicle);
     res.json({ ok: true });
   } catch (e) {
     console.error('drive:', e.message);
     res.status(500).json({ error: 'erreur' });
+  }
+});
+
+/* ---------- Webhook Whapi entrant : bouton « Je suis garé » + véhicule ---------- */
+
+const pendingVehicle = new Map(); // téléphone -> { sessionId, until }
+
+function findRecentOrderByPhone(digits) {
+  const cutoff = Date.now() - 3 * 3600 * 1000;
+  for (let i = orders.length - 1; i >= 0; i--) {
+    const o = orders[i];
+    if (frPhoneToWa(o.phone) === digits && new Date(o.date).getTime() > cutoff) return o;
+  }
+  return null;
+}
+
+app.post('/api/whapi/webhook', async (req, res) => {
+  res.json({ ok: true }); // répondre vite, traiter ensuite
+  try {
+    if (!WHAPI_HOOK_T || req.query.t !== WHAPI_HOOK_T) return;
+    const messages = (req.body && req.body.messages) || [];
+    for (const m of messages) {
+      if (!m || m.from_me) continue;
+      const from = String(m.from || m.chat_id || '').replace(/\D/g, '');
+      if (!from) continue;
+
+      // 1) bouton « Je suis garé devant »
+      const btnId = (m.reply && m.reply.buttons_reply && m.reply.buttons_reply.id)
+        || (m.interactive && m.interactive.button_reply && m.interactive.button_reply.id) || '';
+      if (btnId.startsWith('drive_')) {
+        const sid = btnId.slice(6).replace(/^ButtonsV3:/, '');
+        const order = orders.find(o => o.sessionId === sid) || findRecentOrderByPhone(from);
+        if (order) {
+          markDrive(order, '');
+          pendingVehicle.set(from, { sessionId: order.sessionId, until: Date.now() + 30 * 60 * 1000 });
+          await whapi('/messages/text', {
+            to: from,
+            body: '🚗 Bien reçu ! Décrivez votre véhicule en réponse (couleur, modèle ou plaque) pour qu\'on vous trouve.'
+          }).catch(e => console.error(e.message));
+        }
+        continue;
+      }
+
+      const text = (m.text && m.text.body ? String(m.text.body) : '').trim();
+      if (!text) continue;
+
+      // 2) description du véhicule attendue après le bouton
+      const pending = pendingVehicle.get(from);
+      if (pending && pending.until > Date.now()) {
+        pendingVehicle.delete(from);
+        const order = orders.find(o => o.sessionId === pending.sessionId);
+        if (order) {
+          markDrive(order, text);
+          await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
+            .catch(e => console.error(e.message));
+        }
+        continue;
+      }
+
+      // 3) « GARÉ Clio grise AB-123-CD » en texte libre
+      const g = text.match(/^\s*gar[ée]?e?\b[\s:،-]*(.*)$/i);
+      if (g) {
+        const order = findRecentOrderByPhone(from);
+        if (order) {
+          markDrive(order, g[1] || '');
+          await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
+            .catch(e => console.error(e.message));
+        } else {
+          await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' })
+            .catch(e => console.error(e.message));
+        }
+      }
+    }
+  } catch (e) {
+    console.error('whapi webhook:', e.message);
   }
 });
 
@@ -427,5 +535,32 @@ app.get('/film/', (req, res) => res.redirect(301, '/film'));
 
 app.use(express.static(path.join(__dirname), { extensions: ['html'] }));
 
+/* enregistre le webhook entrant chez Whapi (idempotent, au démarrage) */
+async function configureWhapiWebhook() {
+  if (!WHAPI_TOKEN || !PUBLIC_URL) {
+    if (WHAPI_TOKEN) console.log('whapi webhook: PUBLIC_URL absent, configuration ignorée');
+    return;
+  }
+  try {
+    const res = await fetch(`${WHAPI_API_URL}/settings`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${WHAPI_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        webhooks: [{
+          url: `${PUBLIC_URL}/api/whapi/webhook?t=${WHAPI_HOOK_T}`,
+          events: [{ type: 'messages', method: 'post' }],
+          mode: 'body'
+        }]
+      })
+    });
+    console.log('whapi webhook:', res.ok ? 'configuré → ' + PUBLIC_URL : 'échec ' + res.status);
+  } catch (e) {
+    console.error('whapi webhook:', e.message);
+  }
+}
+
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Mademoiselle Bobùn en ligne sur :${port} · commandes chargées : ${orders.length}`));
+app.listen(port, () => {
+  console.log(`Mademoiselle Bobùn en ligne sur :${port} · commandes chargées : ${orders.length}`);
+  configureWhapiWebhook();
+});
