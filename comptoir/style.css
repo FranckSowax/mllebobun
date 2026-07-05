@@ -242,6 +242,9 @@ a { color: inherit; text-decoration: none; }
   border-radius: 50%;
   overflow: hidden;
   position: relative;
+  /* force le clip circulaire même sur un enfant animé (bug WebKit/Blink) */
+  isolation: isolate;
+  transform: translateZ(0);
   box-shadow:
     0 40px 110px rgba(0, 0, 0, .7),
     0 0 0 1px rgba(140, 90, 46, .35),
@@ -257,9 +260,13 @@ a { color: inherit; text-decoration: none; }
   display: block;
 }
 
+/* scale ≥ √2 : le carré couvre toujours le cercle pendant la rotation */
 .plat-media img.spin { animation: spin 46s linear infinite; }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  from { transform: rotate(0deg) scale(1.42); }
+  to { transform: rotate(360deg) scale(1.42); }
+}
 
 .plat-txt {
   display: flex;

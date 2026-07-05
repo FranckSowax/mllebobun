@@ -56,10 +56,13 @@
   const VIDEO = {
     'bobun-boeuf': '/assets/video/choix/bobun-boeuf.mp4',
     'bobun-poulet': '/assets/video/choix/bobun-poulet.mp4',
+    'bobun-crevette': '/assets/video/carte/bobun-crevette.mp4',
     'bobun-veggie': '/assets/video/choix/bobun-veggie.mp4',
     'loclac-boeuf': '/assets/video/carte/loclac.mp4',
     'loclac-poulet': '/assets/video/carte/loclac-poulet.mp4',
-    'loclac-veggie': '/assets/video/carte/loclac-veggie.mp4'
+    'loclac-veggie': '/assets/video/carte/loclac-veggie.mp4',
+    'nems': '/assets/video/carte/nems.mp4',
+    'rouleaux': '/assets/video/carte/rouleaux.mp4'
   };
 
   /* ---------- construction des écrans ---------- */
