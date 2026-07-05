@@ -73,7 +73,7 @@ const CATALOG = {
   sup_oeuf: { name: 'Supplément œuf au plat', amount: 100, sup: true }
 };
 
-const CANCEL_PATHS = ['/', '/bobunbeef/', '/loclac/'];
+const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/'];
 
 /* ---------- Persistance (JSONL sur volume) ---------- */
 
@@ -328,6 +328,14 @@ app.get('/api/orders/stream', checkKey, (req, res) => {
   const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) { /* ignore */ } }, 25000);
   req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
 });
+
+/* ---------- Pages ---------- */
+
+// LE PLATEAU (carte interactive) est la page d'accueil
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'plateau', 'index.html')));
+// l'ancien film « la descente du bol » reste accessible sur /film
+app.get('/film', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/film/', (req, res) => res.redirect(301, '/film'));
 
 /* ---------- Site statique ---------- */
 

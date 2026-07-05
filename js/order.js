@@ -32,6 +32,7 @@
 
   const PAGE = location.pathname.includes('/bobunbeef') ? '/bobunbeef/'
     : location.pathname.includes('/loclac') ? '/loclac/'
+    : location.pathname.includes('/film') ? '/film'
     : '/';
 
   /* --- steppers dans chaque carte --- */

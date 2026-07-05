@@ -57,8 +57,6 @@
   /* ================= MARQUEE ================= */
 
   const LINKS = [
-    ['CLICK\'N\'COLLECT', 'https://wa.link/ghostkitchen'],
-    ['WHATSAPP', 'https://wa.link/ghostkitchen'],
     ['DELIVEROO', 'https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun'],
     ['UBER EATS', 'https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw']
   ];
@@ -84,7 +82,7 @@
 
   /* ================= DONNÉES + MODES ================= */
 
-  fetch('../assets/menu.json').then(r => r.json()).then(menu => {
+  fetch('/assets/menu.json').then(r => r.json()).then(menu => {
     if (REDUCED) buildGrid(menu); else initWheel(menu);
   }).catch(() => buildGridFallback());
 
@@ -106,7 +104,7 @@
       `<h2>${cat.label}</h2>` +
       menu.items.filter(i => i.cat === cat.id).map(i => `
         <article class="gcard">
-          <img src="../${i.imgSm}" alt="${i.nom}" loading="lazy">
+          <img src="/${i.imgSm}" alt="${i.nom}" loading="lazy">
           <h3>${i.nom}</h3>
           <p>${i.desc}</p>
           <a href="${i.url}" target="_blank" rel="noopener">COMMANDER${i.prix ? ' · ' + i.prix + ' €' : ''}</a>
@@ -193,7 +191,7 @@
         el.setAttribute('role', 'option');
         el.setAttribute('aria-label', item.nom);
         el.dataset.i = i;
-        el.innerHTML = `<div class="plat-inner"><img src="../${item.img}" alt="" draggable="false"></div>`;
+        el.innerHTML = `<div class="plat-inner"><img src="/${item.img}" alt="" draggable="false"></div>`;
         el._drop = dropIn ? -60 : 0;
         el._dropS = dropIn ? .8 : 1;
         el._rx = 0;
@@ -577,7 +575,7 @@
 
     /* ---------- préchargement différé des autres catégories ---------- */
     setTimeout(() => {
-      menu.items.filter(i => i.cat !== state.cat).forEach(i => { new Image().src = '../' + i.img; });
+      menu.items.filter(i => i.cat !== state.cat).forEach(i => { new Image().src = '/' + i.img; });
     }, 2500);
 
     /* ---------- go ---------- */
