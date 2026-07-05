@@ -49,6 +49,11 @@ const CATALOG = {
     amount: 1190,
     description: 'Nems végétariens, tofu doré à la citronnelle, cacahuètes, oignons frits et crudités.'
   },
+  crevette: {
+    name: 'Bo Bún Crevette',
+    amount: 1390,
+    description: 'Tôm bun avec vermicelles, crevettes décortiquées et nems, cacahuètes et oignons frits et crudités.'
+  },
   /* loc lac */
   loclac_boeuf: {
     name: 'Loc Lac Bœuf',

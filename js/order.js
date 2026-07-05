@@ -11,6 +11,7 @@
   const ITEMS = window.ORDER_ITEMS || [
     { id: 'boeuf', price: 1390 },
     { id: 'poulet', price: 1290 },
+    { id: 'crevette', price: 1390 },
     { id: 'veggie', price: 1190 }
   ];
   const SUPS = [
