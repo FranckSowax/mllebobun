@@ -75,6 +75,13 @@
     const fin = $('#fin');
     const catLabel = id => (menu.categories.find(c => c.id === id) || {}).label || '';
 
+    // COMMANDER : les bobun et loc lac renvoient vers nos pages de
+    // commande (films + panier Stripe), le reste vers la fiche produit
+    const ctaUrl = item =>
+      item.cat === 'bobun' ? '/bobunbeef/'
+      : item.cat === 'loclac' ? '/loclac/'
+      : item.url;
+
     menu.items.forEach((item, idx) => {
       const sec = document.createElement('section');
       sec.className = 'plat-screen';
@@ -83,6 +90,8 @@
       const media = VIDEO[item.id] && !REDUCED
         ? `<video src="${VIDEO[item.id]}" muted loop playsinline preload="metadata" aria-hidden="true"></video>`
         : `<img src="/${item.img}" alt="" class="${REDUCED ? '' : 'spin'}" loading="lazy">`;
+      const url = ctaUrl(item);
+      const ext = url.startsWith('http') ? ' target="_blank" rel="noopener"' : '';
       sec.innerHTML = `
         <div class="plat-in">
           <div class="plat-media">${media}</div>
@@ -91,7 +100,7 @@
             <h2>${item.nom}</h2>
             <p class="plat-desc">${item.desc}</p>
             <p class="plat-prix">${item.prix ? item.prix + ' €' : ''}</p>
-            <a class="plat-cta" href="${item.url}" target="_blank" rel="noopener" aria-label="Commander ${item.nom}">COMMANDER</a>
+            <a class="plat-cta" href="${url}"${ext} aria-label="Commander ${item.nom}">COMMANDER</a>
           </div>
         </div>`;
       fin.before(sec);
