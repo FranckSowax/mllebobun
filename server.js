@@ -86,31 +86,43 @@ let orders = [];
 try {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (fs.existsSync(ORDERS_FILE)) {
-    orders = fs.readFileSync(ORDERS_FILE, 'utf8')
+    const lines = fs.readFileSync(ORDERS_FILE, 'utf8')
       .split('\n').filter(Boolean)
       .map(l => { try { return JSON.parse(l); } catch (e) { return null; } })
       .filter(Boolean);
+    for (const l of lines) {
+      if (l._evt === 'drive') {
+        const o = orders.find(x => x.sessionId === l.sessionId);
+        if (o) o.drive = { vehicle: l.vehicle, at: l.date };
+      } else {
+        orders.push(l);
+      }
+    }
   }
 } catch (e) {
   console.error('storage init:', e.message);
 }
 
-function saveOrder(order) {
-  orders.push(order);
+function appendLine(obj) {
   try {
-    fs.appendFileSync(ORDERS_FILE, JSON.stringify(order) + '\n');
+    fs.appendFileSync(ORDERS_FILE, JSON.stringify(obj) + '\n');
   } catch (e) {
     console.error('storage write:', e.message);
   }
-  broadcast(order);
+}
+
+function saveOrder(order) {
+  orders.push(order);
+  appendLine(order);
+  broadcast('order', order);
 }
 
 /* ---------- SSE (dashboard temps réel) ---------- */
 
 const sseClients = new Set();
 
-function broadcast(order) {
-  const payload = `event: order\ndata: ${JSON.stringify(order)}\n\n`;
+function broadcast(type, data) {
+  const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
   sseClients.forEach(res => { try { res.write(payload); } catch (e) { /* ignore */ } });
 }
 
@@ -310,6 +322,37 @@ app.get('/api/session/:id', async (req, res) => {
   }
 });
 
+/* ---------- Option Drive : le client est garé devant ---------- */
+
+app.post('/api/drive', async (req, res) => {
+  try {
+    const { session_id, vehicle } = req.body || {};
+    if (!/^cs_(live|test)_/.test(String(session_id || ''))) return res.status(400).json({ error: 'session invalide' });
+    const cleanVehicle = String(vehicle || '').slice(0, 120).trim() || 'véhicule non décrit';
+    let order = orders.find(o => o.sessionId === session_id);
+    if (!order && stripe) {
+      // le webhook peut ne pas être encore arrivé : on vérifie chez Stripe
+      try {
+        const s = await stripe.checkout.sessions.retrieve(session_id);
+        if (s.payment_status !== 'paid') return res.status(400).json({ error: 'commande introuvable' });
+        order = { code: (s.metadata && s.metadata.code) || '—', sessionId: session_id };
+      } catch (e) {
+        return res.status(404).json({ error: 'commande introuvable' });
+      }
+    }
+    if (!order) return res.status(404).json({ error: 'commande introuvable' });
+    const evt = { _evt: 'drive', sessionId: session_id, vehicle: cleanVehicle, date: new Date().toISOString() };
+    const stored = orders.find(o => o.sessionId === session_id);
+    if (stored) stored.drive = { vehicle: cleanVehicle, at: evt.date };
+    appendLine(evt);
+    broadcast('drive', { code: order.code, vehicle: cleanVehicle, sessionId: session_id, at: evt.date });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('drive:', e.message);
+    res.status(500).json({ error: 'erreur' });
+  }
+});
+
 /* ---------- Dashboard API (clé requise) ---------- */
 
 function checkKey(req, res, next) {
@@ -320,6 +363,44 @@ function checkKey(req, res, next) {
 
 app.get('/api/orders', checkKey, (req, res) => {
   res.json({ orders: orders.slice(-500).reverse() });
+});
+
+/* catalogue pour la prise de commande sur place */
+app.get('/api/catalog', checkKey, (req, res) => {
+  res.json({
+    items: Object.entries(CATALOG).map(([id, c]) => ({
+      id, name: c.name, amount: c.amount, sup: !!c.sup
+    }))
+  });
+});
+
+/* commande prise SUR PLACE depuis le dashboard (encaissement au comptoir) */
+app.post('/api/orders/manual', checkKey, (req, res) => {
+  try {
+    const { items, note } = req.body || {};
+    const valid = (Array.isArray(items) ? items : [])
+      .filter(i => i && CATALOG[i.id] && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 30);
+    if (!valid.length) return res.status(400).json({ error: 'Aucun article.' });
+    const now = new Date();
+    const order = {
+      id: 'sp' + now.getTime().toString(36),
+      sessionId: 'surplace_' + now.getTime().toString(36) + Math.random().toString(36).slice(2, 6),
+      code: pickupCode(),
+      date: now.toISOString(),
+      items: valid.map(i => ({
+        name: CATALOG[i.id].name, qty: i.qty, amount: CATALOG[i.id].amount * i.qty
+      })),
+      amount: valid.reduce((s, i) => s + CATALOG[i.id].amount * i.qty, 0),
+      note: String(note || '').slice(0, 400).trim(),
+      phone: '', email: '',
+      status: 'sur place'
+    };
+    saveOrder(order);
+    res.json({ ok: true, code: order.code });
+  } catch (e) {
+    console.error('manual:', e.message);
+    res.status(500).json({ error: 'erreur' });
+  }
 });
 
 app.get('/api/orders/stream', checkKey, (req, res) => {

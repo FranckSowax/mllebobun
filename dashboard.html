@@ -104,6 +104,81 @@
     .print-btn:active { transform: scale(.92); }
     .print-btn.done { border-color: rgba(46,204,113,.6); }
 
+    /* ---- commande sur place ---- */
+    .new-order { color: var(--caramel); border-color: rgba(232,145,45,.5); }
+    .new-order:hover { background: rgba(232,145,45,.1); }
+
+    .badge.sp { background: rgba(232,145,45,.14); color: var(--caramel); border-color: rgba(232,145,45,.45); }
+    .badge.drv { background: rgba(61,139,255,.14); color: #7db4ff; border-color: rgba(61,139,255,.5); margin-top: 5px; display: inline-block; }
+
+    #modal {
+      position: fixed; inset: 0; z-index: 120;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    #modal[hidden] { display: none; }
+    .modal-box {
+      background: var(--noir2); border: 1px solid rgba(244,237,224,.15);
+      border-radius: 18px; padding: 26px; width: min(520px, 100%);
+      max-height: 88vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h2 { font-weight: 900; font-size: 1.3rem; }
+    #m-close {
+      background: transparent; border: 1px solid rgba(244,237,224,.25); color: var(--ivoire);
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: .95rem;
+    }
+    .cat-list { display: flex; flex-direction: column; gap: 8px; }
+    .cat-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .cat-row.sup { padding-left: 14px; }
+    .cat-name { font-weight: 300; font-size: .92rem; flex: 1; }
+    .cat-row.sup .cat-name { color: rgba(244,237,224,.65); font-size: .85rem; }
+    .cat-prix { font-family: var(--mono); font-size: .78rem; color: var(--caramel); white-space: nowrap; }
+    .cat-qty { display: inline-flex; align-items: center; gap: 3px; border: 1px solid rgba(244,237,224,.22); border-radius: 999px; padding: 2px; }
+    .cat-qty button {
+      width: 30px; height: 30px; border: none; border-radius: 50%; background: transparent;
+      color: var(--ivoire); font-size: 1.05rem; cursor: pointer;
+    }
+    .cat-qty button:hover { background: var(--caramel); color: var(--noir); }
+    .cat-qty span { min-width: 22px; text-align: center; font-family: var(--mono); font-size: .85rem; }
+    #m-note {
+      background: rgba(244,237,224,.06); border: 1px solid rgba(244,237,224,.18);
+      border-radius: 10px; color: var(--ivoire); font-family: var(--sans); font-weight: 300;
+      font-size: .9rem; padding: 12px 14px; width: 100%;
+    }
+    .m-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .m-total { font-weight: 900; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+    #m-create {
+      background: var(--caramel); color: var(--noir); border: none; border-radius: 999px;
+      font-family: var(--mono); font-size: .68rem; letter-spacing: .13em; font-weight: 500;
+      padding: 14px 24px; cursor: pointer;
+    }
+    #m-create:disabled { opacity: .45; cursor: not-allowed; }
+    .m-err { color: #ff9d7a; font-size: .85rem; }
+
+    /* ---- overlay bleu drive ---- */
+    #flash-drive {
+      position: fixed; inset: 0; z-index: 100;
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+      background: rgba(61, 139, 255, .34);
+      backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+      text-align: center; cursor: pointer;
+    }
+    #flash-drive.on { display: flex; animation: driveblink .5s step-end 8; }
+    @keyframes driveblink {
+      0% { background: rgba(61, 139, 255, .48); }
+      50% { background: rgba(61, 139, 255, .14); }
+    }
+    #flash-drive .big { font-weight: 900; font-size: clamp(1.6rem, 5vw, 3.2rem); text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+    #flash-drive .code-big { font-family: var(--mono); font-size: clamp(1.4rem, 4vw, 2.4rem); color: #fff; }
+    .fd-vehicle {
+      font-weight: 600; font-size: clamp(1rem, 2.6vw, 1.6rem);
+      background: rgba(11,8,5,.65); padding: 12px 26px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.35);
+    }
+    #flash-drive .hint { font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; color: rgba(255,255,255,.85); }
+
     /* ---- Overlay vert clignotant : nouvelle commande payée ---- */
     #flash {
       position: fixed; inset: 0; z-index: 100;
@@ -155,6 +230,7 @@
   <header hidden>
     <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span></h1>
     <div class="print-ctl">
+      <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE</button>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
       <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
       <p class="meta" id="today-meta">—</p>
@@ -183,6 +259,31 @@
     <div class="hint">TOUCHER POUR FERMER</div>
   </div>
 
+  <!-- overlay bleu : client garé devant (Drive) -->
+  <div id="flash-drive" role="alert">
+    <div class="big">🚗 CLIENT EN DRIVE — SORTIR LA COMMANDE</div>
+    <div class="code-big" id="fd-code"></div>
+    <div class="fd-vehicle" id="fd-vehicle"></div>
+    <div class="hint">TOUCHER POUR FERMER</div>
+  </div>
+
+  <!-- modal commande sur place -->
+  <div id="modal" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2>Commande sur place</h2>
+        <button id="m-close" aria-label="Fermer">✕</button>
+      </div>
+      <div id="cat-list" class="cat-list">Chargement…</div>
+      <input id="m-note" type="text" maxlength="400" placeholder="Note : nom du client, sans coriandre…">
+      <div class="m-foot">
+        <span class="m-total" id="m-total">0,00 €</span>
+        <button id="m-create" disabled>CRÉER LA COMMANDE</button>
+      </div>
+      <p class="m-err" id="m-err" hidden></p>
+    </div>
+  </div>
+
   <script>
     (() => {
       'use strict';
@@ -205,7 +306,10 @@
           <td class="note">${o.note ? o.note.replace(/</g, '&lt;') : '—'}</td>
           <td class="tel">${o.phone || '—'}${o.email ? '<br>' + o.email.replace(/</g, '&lt;') : ''}</td>
           <td class="amount">${eur(o.amount)}</td>
-          <td><span class="badge">PAYÉE</span></td>
+          <td class="statut-cell">${o.status === 'sur place'
+            ? '<span class="badge sp">SUR PLACE</span>'
+            : '<span class="badge">PAYÉE</span>'}${o.drive
+            ? `<br><span class="badge drv" title="${(o.drive.vehicle || '').replace(/"/g, '&quot;')}">🚗 EN DRIVE</span>` : ''}</td>
           <td><button class="print-btn" data-sid="${o.sessionId}" title="Imprimer le ticket" aria-label="Imprimer la commande ${o.code}">🖨</button></td>
         </tr>`;
       }
@@ -360,7 +464,9 @@
         }
         if (o.phone) txt('\nClient : ' + ascii(o.phone) + '\n');
         push(ESC, 0x61, 1);
-        txt('\nA EMPORTER - PAYEE EN LIGNE\nMerci !\n');
+        txt(o.status === 'sur place'
+          ? '\nSUR PLACE - A ENCAISSER\nMerci !\n'
+          : '\nA EMPORTER - PAYEE EN LIGNE\nMerci !\n');
         push(ESC, 0x64, 4);                       // avance papier
         push(GS, 0x56, 0x42, 0x00);               // coupe partielle (si massicot)
         return new Uint8Array(b);
@@ -400,6 +506,28 @@
         if (o) printOrder(o, btn);
       });
 
+      /* ---- overlay bleu : client en drive ---- */
+      function onDrive(d) {
+        const o = all.find(x => x.sessionId === d.sessionId);
+        if (o) {
+          o.drive = { vehicle: d.vehicle, at: d.at };
+          const row = document.querySelector(`tr[data-id="${d.sessionId}"] .statut-cell`);
+          if (row && !row.querySelector('.drv')) {
+            row.insertAdjacentHTML('beforeend', `<br><span class="badge drv">🚗 EN DRIVE</span>`);
+          }
+        }
+        $('#fd-code').textContent = d.code || '';
+        $('#fd-vehicle').textContent = '🚙 ' + (d.vehicle || 'véhicule non décrit');
+        const fd = $('#flash-drive');
+        fd.classList.remove('on');
+        void fd.offsetWidth;
+        fd.classList.add('on');
+        clearTimeout(fd._t);
+        fd._t = setTimeout(() => fd.classList.remove('on'), 15000);
+      }
+
+      $('#flash-drive').addEventListener('click', () => $('#flash-drive').classList.remove('on'));
+
       let es = null;
       function connectStream() {
         if (es) es.close();
@@ -407,7 +535,75 @@
         es.onopen = () => $('#live-dot').classList.add('live');
         es.onerror = () => $('#live-dot').classList.remove('live');
         es.addEventListener('order', e => { try { addOrder(JSON.parse(e.data)); } catch (err) { /* ignore */ } });
+        es.addEventListener('drive', e => { try { onDrive(JSON.parse(e.data)); } catch (err) { /* ignore */ } });
       }
+
+      /* ---- commande sur place ---- */
+      let catalog = null;
+      const mQty = {};
+
+      async function openModal() {
+        $('#modal').hidden = false;
+        $('#m-err').hidden = true;
+        if (!catalog) {
+          const r = await fetch('/api/catalog', { headers: { 'x-dash-key': KEY } });
+          catalog = (await r.json()).items;
+        }
+        Object.keys(mQty).forEach(k => delete mQty[k]);
+        $('#m-note').value = '';
+        renderCatalog();
+      }
+
+      function renderCatalog() {
+        $('#cat-list').innerHTML = catalog.map(c => `
+          <div class="cat-row ${c.sup ? 'sup' : ''}">
+            <span class="cat-name">${c.name}</span>
+            <span class="cat-prix">${eur(c.amount)}</span>
+            <span class="cat-qty" data-id="${c.id}">
+              <button type="button" data-d="-1" aria-label="Retirer">−</button>
+              <span>${mQty[c.id] || 0}</span>
+              <button type="button" data-d="1" aria-label="Ajouter">+</button>
+            </span>
+          </div>`).join('');
+        updateModalTotal();
+      }
+
+      function updateModalTotal() {
+        const total = catalog ? catalog.reduce((s, c) => s + (mQty[c.id] || 0) * c.amount, 0) : 0;
+        $('#m-total').textContent = eur(total);
+        $('#m-create').disabled = total === 0;
+      }
+
+      $('#new-order').addEventListener('click', openModal);
+      $('#m-close').addEventListener('click', () => { $('#modal').hidden = true; });
+      $('#modal').addEventListener('click', e => {
+        if (e.target.id === 'modal') $('#modal').hidden = true;
+        const btn = e.target.closest('.cat-qty button');
+        if (!btn) return;
+        const id = btn.closest('.cat-qty').dataset.id;
+        mQty[id] = Math.max(0, Math.min(30, (mQty[id] || 0) + (+btn.dataset.d)));
+        btn.closest('.cat-qty').querySelector('span').textContent = mQty[id];
+        updateModalTotal();
+      });
+
+      $('#m-create').addEventListener('click', async () => {
+        const items = Object.entries(mQty).filter(([, q]) => q > 0).map(([id, qty]) => ({ id, qty }));
+        if (!items.length) return;
+        $('#m-create').disabled = true;
+        try {
+          const r = await fetch('/api/orders/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-dash-key': KEY },
+            body: JSON.stringify({ items, note: $('#m-note').value })
+          });
+          if (!r.ok) throw new Error((await r.json()).error || 'erreur');
+          $('#modal').hidden = true;   // la commande arrive via le flux temps réel
+        } catch (e) {
+          $('#m-err').textContent = 'Création impossible : ' + e.message;
+          $('#m-err').hidden = false;
+          $('#m-create').disabled = false;
+        }
+      });
 
       async function load() {
         const res = await fetch('/api/orders', { headers: { 'x-dash-key': KEY } });
@@ -426,7 +622,7 @@
           return;
         }
         $('#login').style.display = 'none';
-        document.querySelectorAll('[hidden]').forEach(el => { if (el.id !== 'empty' || all.length === 0) el.hidden = false; });
+        document.querySelectorAll('header, .stats, .tablewrap').forEach(el => { el.hidden = false; });
         $('#empty').hidden = all.length > 0;
         connectStream();
         setInterval(() => load().catch(() => {}), 60000); // filet de sécurité

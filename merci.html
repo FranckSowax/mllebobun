@@ -55,6 +55,38 @@
       padding: 12px 22px; color: rgba(244, 237, 224, .85);
     }
     .pickup strong { color: var(--caramel); font-size: 1.15rem; }
+    .drive {
+      border: 1px solid rgba(61, 139, 255, .4);
+      background: rgba(61, 139, 255, .07);
+      border-radius: 16px;
+      padding: 22px 24px;
+      display: flex; flex-direction: column; gap: 14px;
+      width: min(480px, 100%);
+    }
+    .drive .eyebrow { color: #7db4ff; }
+    .drive-txt { font-weight: 300; font-size: .92rem; line-height: 1.6; color: rgba(244,237,224,.85); }
+    .drive-route {
+      font-family: var(--mono); font-size: .68rem; letter-spacing: .13em;
+      border: 1px solid rgba(61,139,255,.5); color: #7db4ff;
+      padding: 12px 18px; border-radius: 999px; text-decoration: none;
+      align-self: center;
+    }
+    .drive-route:hover { background: rgba(61,139,255,.12); }
+    .drive-form { display: flex; flex-direction: column; gap: 10px; }
+    .drive-form input {
+      background: rgba(244,237,224,.06); border: 1px solid rgba(244,237,224,.2);
+      border-radius: 10px; color: var(--ivoire); font-family: var(--sans);
+      font-weight: 300; font-size: .9rem; padding: 12px 14px;
+    }
+    .drive-form button {
+      background: #3D8BFF; color: #fff; border: none; border-radius: 999px;
+      font-family: var(--sans); font-weight: 700; font-size: .95rem;
+      padding: 14px; cursor: pointer; transition: filter .25s;
+    }
+    .drive-form button:hover { filter: brightness(1.12); }
+    .drive-form button:disabled { opacity: .6; cursor: wait; }
+    .drive-ok { color: #86B27A; font-size: .92rem; }
+    .drive-err { color: #ff9d7a; font-size: .88rem; }
   </style>
 </head>
 <body>
@@ -68,12 +100,27 @@
       Récupérez votre bol au <strong>200 bis rue Malbec, 33000 Bordeaux</strong>.
       Un doute, une précision&nbsp;? Appelez le <a href="tel:+33557955439">05&nbsp;57&nbsp;95&nbsp;54&nbsp;39</a>.</p>
     <p class="addr">LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>MADEMOISELLE BOBÙN · GHOST KITCHEN · BORDEAUX</p>
+    <!-- OPTION DRIVE -->
+    <section class="drive" id="drive" hidden>
+      <p class="eyebrow">🚗 OPTION DRIVE — ON DÉPOSE VOTRE COMMANDE À VOTRE VOITURE</p>
+      <p class="drive-txt">Garez-vous à proximité du <strong>200 bis rue Malbec, 33000 Bordeaux</strong>,
+        décrivez votre véhicule et prévenez-nous&nbsp;: on vous l'apporte.</p>
+      <a class="drive-route" href="https://www.google.com/maps/dir/?api=1&destination=200+bis+rue+Malbec+33000+Bordeaux&travelmode=driving" target="_blank" rel="noopener">🧭 ITINÉRAIRE DEPUIS MA POSITION</a>
+      <div class="drive-form" id="drive-form">
+        <input id="drive-vehicle" type="text" maxlength="120" placeholder="Votre véhicule : couleur, modèle ou plaque (ex. Clio grise AB-123-CD)">
+        <button id="drive-here" type="button">🚗 JE SUIS GARÉ DEVANT</button>
+      </div>
+      <p class="drive-ok" id="drive-ok" hidden>✅ C'est noté — on vous apporte votre commande à la voiture&nbsp;!</p>
+      <p class="drive-err" id="drive-err" hidden></p>
+    </section>
+
     <a class="back" href="/">← Retour au site</a>
   </main>
   <script>
     (async () => {
       const id = new URLSearchParams(location.search).get('session_id');
       if (!id) return;
+      document.getElementById('drive').hidden = false;
       try {
         const d = await (await fetch('/api/session/' + encodeURIComponent(id))).json();
         if (d.code) {
@@ -81,6 +128,34 @@
           document.getElementById('pickup').hidden = false;
         }
       } catch (e) { /* silencieux */ }
+
+      // option Drive : signaler sa présence
+      const btn = document.getElementById('drive-here');
+      btn.addEventListener('click', async () => {
+        const vehicle = document.getElementById('drive-vehicle').value.trim();
+        const err = document.getElementById('drive-err');
+        err.hidden = true;
+        if (vehicle.length < 3) {
+          err.textContent = 'Décrivez votre véhicule (couleur, modèle ou plaque) pour qu\'on vous trouve.';
+          err.hidden = false;
+          return;
+        }
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/drive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: id, vehicle })
+          });
+          if (!r.ok) throw new Error((await r.json()).error || 'erreur');
+          document.getElementById('drive-form').hidden = true;
+          document.getElementById('drive-ok').hidden = false;
+        } catch (e) {
+          err.textContent = 'Impossible de prévenir la cuisine (' + e.message + ') — appelez le 05 57 95 54 39.';
+          err.hidden = false;
+          btn.disabled = false;
+        }
+      });
     })();
   </script>
 </body>
