@@ -36,8 +36,6 @@
   const MAX_QTY = 20;
 
   const eur = c => (c / 100).toFixed(2).replace('.', ',') + ' €';
-  const state = {};
-  ITEMS.concat(SUPS).forEach(i => { state[i.id] = 0; });
 
   const grid = document.querySelector('.choix-grid');
   const platformRow = document.querySelector('.platform-row');
@@ -67,7 +65,7 @@
     card.appendChild(row);
   });
 
-  /* --- panier --- */
+  /* --- panier : un bol = une ligne, avec ses propres suppléments --- */
   const box = document.createElement('div');
   box.id = 'commander';
   box.className = 'order-box';
@@ -76,19 +74,8 @@
     <p class="eyebrow">À EMPORTER · PAIEMENT EN LIGNE</p>
     <p class="order-pickup-note">🥡 Commande <strong>à emporter</strong>&nbsp;: vous venez la récupérer au
       <strong>200 bis rue Malbec, Bordeaux</strong>. Votre code de retrait arrive sur WhatsApp.</p>
+    <p class="order-sups-hint">Ajoutez un bol, puis choisissez ses suppléments&nbsp;: chaque bol a les siens.</p>
     <div class="order-lines" aria-live="polite"></div>
-    <p class="order-sups-label">SUPPLÉMENTS</p>
-    <div class="order-sups">
-      ${SUPS.map(s => `
-        <div class="order-sup">
-          <span class="sup-name">${s.name} <em>+${eur(s.price)}</em></span>
-          <div class="qty qty-s" data-id="${s.id}">
-            <button type="button" class="qty-btn" data-d="-1" aria-label="Retirer ${s.name}">−</button>
-            <span class="qty-n">0</span>
-            <button type="button" class="qty-btn" data-d="1" aria-label="Ajouter ${s.name}">+</button>
-          </div>
-        </div>`).join('')}
-    </div>
     <label class="order-note-label" for="order-wa">VOTRE NUMÉRO WHATSAPP · POUR RECEVOIR LE CODE DE RETRAIT ET SON QR CODE</label>
     <input id="order-wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="06 12 34 56 78" required>
     <label class="order-note-label" for="order-note">UNE NOTE POUR LA CUISINE&nbsp;? (ALLERGIES, HEURE DE RETRAIT…)</label>
@@ -104,72 +91,85 @@
   const payBtn = box.querySelector('#order-pay');
   const waInput = box.querySelector('#order-wa');
 
+  const dishById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+  const supById = Object.fromEntries(SUPS.map(s => [s.id, s]));
+  let lines = [];   // { uid, dishId, sups: { supId: true } }
+  let uidSeq = 1;
+
   function bowlName(id) {
     const card = grid.querySelector(`.choix-card[data-id="${id}"] h3`);
-    return card ? card.textContent : id;
+    return card ? card.textContent.trim() : id;
   }
-
-  function bowlsCount() {
-    return ITEMS.reduce((s, it) => s + state[it.id], 0);
+  function dishCount(id) { return lines.filter(l => l.dishId === id).length; }
+  function lineSubtotal(l) {
+    return dishById[l.dishId].price + Object.keys(l.sups)
+      .reduce((s, sid) => s + (supById[sid] ? supById[sid].price : 0), 0);
   }
+  function supShort(name) { return name.replace(/^Supplément\s+/i, ''); }
 
   function render() {
-    let total = 0;
-    const lines = [];
+    // compteurs sur les cartes de plats
     ITEMS.forEach(it => {
-      const q = state[it.id];
+      const n = dishCount(it.id);
       const el = grid.querySelector(`.qty[data-id="${it.id}"] .qty-n`);
-      if (el) el.textContent = q;
+      if (el) el.textContent = n;
       const card = grid.querySelector(`.choix-card[data-id="${it.id}"]`);
-      if (card) card.classList.toggle('in-cart', q > 0);
-      if (q > 0) {
-        total += q * it.price;
-        lines.push(`<div class="order-line"><span>${q} × ${bowlName(it.id)}</span><span>${eur(q * it.price)}</span></div>`);
-      }
+      if (card) card.classList.toggle('in-cart', n > 0);
     });
-    SUPS.forEach(su => {
-      const q = state[su.id];
-      const el = box.querySelector(`.qty[data-id="${su.id}"] .qty-n`);
-      if (el) el.textContent = q;
-      if (q > 0) {
-        total += q * su.price;
-        lines.push(`<div class="order-line order-line-sup"><span>${q} × ${su.name}</span><span>${eur(q * su.price)}</span></div>`);
-      }
-    });
-    box.hidden = bowlsCount() === 0;
-    linesEl.innerHTML = lines.join('');
-    totalEl.textContent = eur(total);
+    // lignes du panier
+    linesEl.innerHTML = lines.map(l => {
+      const chips = SUPS.map(s =>
+        `<button type="button" class="sup-chip ${l.sups[s.id] ? 'on' : ''}" data-uid="${l.uid}" data-sup="${s.id}">
+          ${supShort(s.name)} <em>+${eur(s.price)}</em></button>`).join('');
+      return `<div class="cart-line" data-uid="${l.uid}">
+        <div class="cart-line-head">
+          <span class="cart-line-name">${bowlName(l.dishId)}</span>
+          <span class="cart-line-price">${eur(lineSubtotal(l))}</span>
+          <button type="button" class="cart-line-del" data-uid="${l.uid}" aria-label="Retirer ce bol">✕</button>
+        </div>
+        <div class="cart-line-sups"><span class="cart-sup-label">SUPPLÉMENTS</span>${chips}</div>
+      </div>`;
+    }).join('');
+    totalEl.textContent = eur(lines.reduce((s, l) => s + lineSubtotal(l), 0));
+    box.hidden = lines.length === 0;
   }
 
-  function onQtyClick(e) {
+  function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
+
+  // +/- sur une carte de plat : ajoute / retire une ligne de ce bol
+  grid.addEventListener('click', e => {
     const btn = e.target.closest('.qty-btn');
     if (!btn) return;
     const id = btn.closest('.qty').dataset.id;
-    state[id] = Math.max(0, Math.min(MAX_QTY, state[id] + (+btn.dataset.d)));
+    if (+btn.dataset.d > 0) {
+      if (lines.length < MAX_QTY) lines.push({ uid: uidSeq++, dishId: id, sups: {} });
+    } else {
+      for (let i = lines.length - 1; i >= 0; i--) { if (lines[i].dishId === id) { lines.splice(i, 1); break; } }
+    }
     errorEl.hidden = true;
     render();
-  }
+  });
 
-  grid.addEventListener('click', onQtyClick);
-  box.addEventListener('click', onQtyClick);
-
-  function showError(msg) {
-    errorEl.textContent = msg;
-    errorEl.hidden = false;
-  }
+  // dans le panier : (dé)sélectionner un supplément d'une ligne, ou retirer la ligne
+  box.addEventListener('click', e => {
+    const chip = e.target.closest('.sup-chip');
+    if (chip) {
+      const l = lines.find(x => String(x.uid) === chip.dataset.uid);
+      if (l) { const sid = chip.dataset.sup; if (l.sups[sid]) delete l.sups[sid]; else l.sups[sid] = true; render(); }
+      return;
+    }
+    const del = e.target.closest('.cart-line-del');
+    if (del) { lines = lines.filter(x => String(x.uid) !== del.dataset.uid); render(); }
+  });
 
   payBtn.addEventListener('click', async () => {
-    const items = ITEMS.concat(SUPS).filter(it => state[it.id] > 0)
-      .map(it => ({ id: it.id, qty: state[it.id] }));
-    if (!bowlsCount()) return;
-
+    if (!lines.length) return;
     const waDigits = waInput.value.replace(/\D/g, '');
     if (waDigits.length < 10) {
       showError('Indiquez votre numéro WhatsApp — c\'est là que vous recevrez votre code de retrait.');
       waInput.focus();
       return;
     }
-
     payBtn.disabled = true;
     payBtn.classList.add('is-loading');
     errorEl.hidden = true;
@@ -178,7 +178,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items,
+          lines: lines.map(l => ({ dish: l.dishId, sups: Object.keys(l.sups) })),
           note: document.getElementById('order-note').value,
           wa: waInput.value,
           page: PAGE

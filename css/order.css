@@ -80,7 +80,95 @@
 
 .order-pickup-note strong { color: var(--caramel); font-weight: 600; }
 
-.order-lines { display: flex; flex-direction: column; gap: 8px; }
+.order-sups-hint {
+  font-weight: 300;
+  font-size: .82rem;
+  color: rgba(244, 237, 224, .6);
+  font-style: italic;
+}
+
+.order-lines { display: flex; flex-direction: column; gap: 12px; }
+
+/* une ligne = un bol + ses suppléments */
+.cart-line {
+  border: 1px solid rgba(244, 237, 224, .12);
+  border-radius: 14px;
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(244, 237, 224, .03);
+}
+
+.cart-line-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-line-name { font-weight: 600; font-size: .98rem; flex: 1; }
+
+.cart-line-price {
+  font-weight: 800;
+  color: var(--caramel);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cart-line-del {
+  background: transparent;
+  border: 1px solid rgba(244, 237, 224, .22);
+  color: rgba(244, 237, 224, .7);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: .78rem;
+  flex: none;
+  transition: border-color .2s, color .2s;
+}
+
+.cart-line-del:hover { border-color: #ff9d7a; color: #ff9d7a; }
+
+.cart-line-sups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.cart-sup-label {
+  font-family: var(--mono);
+  font-size: .54rem;
+  letter-spacing: .14em;
+  color: rgba(244, 237, 224, .4);
+  margin-right: 2px;
+}
+
+.sup-chip {
+  font-family: var(--sans);
+  font-size: .78rem;
+  font-weight: 300;
+  color: rgba(244, 237, 224, .82);
+  background: transparent;
+  border: 1px solid rgba(244, 237, 224, .2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+}
+
+.sup-chip em { font-style: normal; color: var(--caramel); font-weight: 600; }
+
+.sup-chip:hover { border-color: rgba(232, 145, 45, .5); }
+
+.sup-chip.on {
+  background: var(--caramel);
+  border-color: var(--caramel);
+  color: var(--noir);
+}
+
+.sup-chip.on em { color: var(--noir); }
 
 .order-line-sup { color: rgba(244, 237, 224, .65); font-size: .88rem; }
 

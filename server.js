@@ -401,31 +401,57 @@ app.get('/api/health', (req, res) => {
 app.post('/api/checkout', async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Paiement non configuré.' });
   try {
-    const { items, note, page, wa } = req.body || {};
-
-    const valid = (Array.isArray(items) ? items : [])
-      .filter(i => i && catItem(i.id) && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20);
-
-    if (!valid.some(i => !catItem(i.id).sup)) {
-      return res.status(400).json({ error: 'Ajoutez au moins un bol.' });
-    }
+    const { items, lines, note, page, wa } = req.body || {};
 
     const waDigits = frPhoneToWa(wa);
     if (waDigits.length < 10 || waDigits.length > 15) {
       return res.status(400).json({ error: 'Numéro WhatsApp requis pour le code de retrait.' });
     }
 
-    const line_items = valid.map(i => {
-      const c = catItem(i.id);
-      return {
-        quantity: i.qty,
-        price_data: {
-          currency: 'eur',
-          unit_amount: c.amount,
-          product_data: Object.assign({ name: c.name }, c.description ? { description: c.description } : {})
-        }
-      };
-    });
+    const supName = n => n.replace(/^Supplément\s+/i, '').trim();
+    let line_items;
+
+    if (Array.isArray(lines) && lines.length) {
+      // format « ligne » : un bol + ses propres suppléments
+      const valid = lines.slice(0, 30).map(l => {
+        const dish = l && catItem(l.dish);
+        if (!dish || dish.sup) return null;
+        const sups = (Array.isArray(l.sups) ? l.sups : [])
+          .map(id => catItem(id)).filter(s => s && s.sup);
+        return { dish, sups };
+      }).filter(Boolean);
+      if (!valid.length) return res.status(400).json({ error: 'Ajoutez au moins un bol.' });
+
+      // regroupe les lignes identiques (même bol + mêmes suppléments)
+      const groups = {};
+      for (const v of valid) {
+        const sig = v.dish.id + '|' + v.sups.map(s => s.id).sort().join(',');
+        (groups[sig] || (groups[sig] = { v, qty: 0 })).qty++;
+      }
+      line_items = Object.values(groups).map(({ v, qty }) => {
+        const name = v.dish.name + (v.sups.length ? ` + ${v.sups.map(s => supName(s.name)).join(', ')}` : '');
+        const amount = v.dish.amount + v.sups.reduce((s, x) => s + x.amount, 0);
+        return { quantity: qty, price_data: { currency: 'eur', unit_amount: amount, product_data: { name } } };
+      });
+    } else {
+      // ancien format « plat » à plat (compat)
+      const valid = (Array.isArray(items) ? items : [])
+        .filter(i => i && catItem(i.id) && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20);
+      if (!valid.some(i => !catItem(i.id).sup)) {
+        return res.status(400).json({ error: 'Ajoutez au moins un bol.' });
+      }
+      line_items = valid.map(i => {
+        const c = catItem(i.id);
+        return {
+          quantity: i.qty,
+          price_data: {
+            currency: 'eur',
+            unit_amount: c.amount,
+            product_data: Object.assign({ name: c.name }, c.description ? { description: c.description } : {})
+          }
+        };
+      });
+    }
 
     const cleanNote = String(note || '').slice(0, 400).trim();
     const code = pickupCode();
