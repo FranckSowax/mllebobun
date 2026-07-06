@@ -453,11 +453,50 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
+/* ---------- DÉMO : paiement simulé, workflows réels ---------- */
+app.post('/api/demo', checkKey, async (req, res) => {
+  try {
+    const { wa, note, item } = req.body || {};
+    const waDigits = frPhoneToWa(wa);
+    if (waDigits.length < 10 || waDigits.length > 15) {
+      return res.status(400).json({ error: 'Numéro WhatsApp requis (pour recevoir le code de la démo).' });
+    }
+    const c = item ? catItem(item) : null;
+    const items = c
+      ? [{ name: c.name + ' — DÉMO', qty: 1, amount: 0 }]
+      : [{ name: 'Commande démo — test workflow', qty: 1, amount: 0 }];
+    const now = new Date();
+    const order = {
+      id: 'demo' + now.getTime().toString(36),
+      sessionId: 'demo_' + now.getTime().toString(36) + Math.random().toString(36).slice(2, 6),
+      code: pickupCode(),
+      date: now.toISOString(),
+      items, amount: 0,
+      note: String(note || '').slice(0, 400).trim(),
+      phone: waDigits, email: '',
+      status: 'démo'
+    };
+    saveOrder(order);                                   // dashboard + overlay + impression + Supabase
+    sendCustomerWhatsApp(order).catch(e => console.error('demo wa client:', e.message)); // code + QR + Drive
+    sendTeamWhatsApp(order).catch(e => console.error('demo wa équipe:', e.message));
+    res.json({ ok: true, session_id: order.sessionId, code: order.code });
+  } catch (e) {
+    console.error('demo:', e.message);
+    res.status(500).json({ error: 'erreur' });
+  }
+});
+
 /* Code de retrait affiché sur merci.html */
 app.get('/api/session/:id', async (req, res) => {
-  if (!stripe || !/^cs_(live|test)_/.test(req.params.id)) return res.status(400).json({});
+  const id = req.params.id;
+  // commandes démo / sur place : lues depuis la mémoire
+  if (/^(demo|surplace)_/.test(id)) {
+    const o = orders.find(x => x.sessionId === id);
+    return res.json(o ? { code: o.code, amount: o.amount, demo: id.startsWith('demo_') } : {});
+  }
+  if (!stripe || !/^cs_(live|test)_/.test(id)) return res.status(400).json({});
   try {
-    const s = await stripe.checkout.sessions.retrieve(req.params.id);
+    const s = await stripe.checkout.sessions.retrieve(id);
     if (s.payment_status !== 'paid') return res.json({});
     res.json({ code: (s.metadata && s.metadata.code) || '', amount: s.amount_total });
   } catch (e) {
@@ -481,9 +520,9 @@ function markDrive(order, vehicle) {
 app.post('/api/drive', async (req, res) => {
   try {
     const { session_id, vehicle } = req.body || {};
-    if (!/^cs_(live|test)_/.test(String(session_id || ''))) return res.status(400).json({ error: 'session invalide' });
+    if (!/^(cs_(live|test)|demo|surplace)_/.test(String(session_id || ''))) return res.status(400).json({ error: 'session invalide' });
     let order = orders.find(o => o.sessionId === session_id);
-    if (!order && stripe) {
+    if (!order && /^cs_(live|test)_/.test(session_id) && stripe) {
       // le webhook peut ne pas être encore arrivé : on vérifie chez Stripe
       try {
         const s = await stripe.checkout.sessions.retrieve(session_id);
@@ -625,6 +664,7 @@ app.get('/api/stats', checkKey, (req, res) => {
   let ca7 = 0, ord7 = 0, ca30 = 0, ord30 = 0;
 
   for (const o of orders) {
+    if (o.status === 'démo') continue;   // les commandes démo ne comptent pas dans les stats
     const d = parisDay(o.date);
     const day = days[d] || (days[d] = { orders: 0, ca: 0, bowls: 0 });
     day.orders++; day.ca += o.amount; day.bowls += bowlsOf(o);
@@ -649,7 +689,7 @@ app.get('/api/stats', checkKey, (req, res) => {
     today: { orders: td.orders, ca: td.ca, bowls: td.bowls, avg: td.orders ? Math.round(td.ca / td.orders) : 0 },
     week: { ca: ca7, orders: ord7 },
     month: { ca: ca30, orders: ord30 },
-    totals: { orders: orders.length, online, surplace, drive },
+    totals: { orders: online + surplace, online, surplace, drive },
     byDay, topDishes, source: sb ? 'supabase' : 'volume'
   });
 });

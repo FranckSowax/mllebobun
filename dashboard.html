@@ -175,6 +175,9 @@
     .vn-btn { display: block; font-size: .5rem; font-weight: 400; letter-spacing: .1em; color: rgba(232,145,45,.7); margin-top: 2px; }
 
     .badge.sp { background: rgba(232,145,45,.14); color: var(--caramel); border-color: rgba(232,145,45,.45); }
+    .badge.demo { background: rgba(155,120,255,.16); color: #b79dff; border-color: rgba(155,120,255,.5); }
+    .demo-link { color: #b79dff; border-color: rgba(155,120,255,.45); text-decoration: none; display: inline-flex; align-items: center; }
+    .demo-link:hover { background: rgba(155,120,255,.12); }
     .badge.drv { background: rgba(61,139,255,.14); color: #7db4ff; border-color: rgba(61,139,255,.5); margin-top: 5px; display: inline-block; }
 
     #modal {
@@ -352,6 +355,7 @@
     <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span><span class="vn vn-h1">Đơn hàng</span></h1>
     <div class="print-ctl">
       <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE<span class="vn vn-btn">GỌI MÓN TẠI CHỖ</span></button>
+      <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
       <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
       <p class="meta" id="today-meta">—</p>
@@ -525,7 +529,9 @@
             : '—'}</td>
           <td class="tel">${o.phone || '—'}${o.email ? '<br>' + o.email.replace(/</g, '&lt;') : ''}</td>
           <td class="amount">${eur(o.amount)}</td>
-          <td class="statut-cell">${o.status === 'sur place'
+          <td class="statut-cell">${o.status === 'démo'
+            ? '<span class="badge demo">🧪 DÉMO</span>'
+            : o.status === 'sur place'
             ? '<span class="badge sp">SUR PLACE</span>'
             : '<span class="badge">PAYÉE</span>'}${o.drive
             ? `<br><span class="badge drv" title="${(o.drive.vehicle || '').replace(/"/g, '&quot;')}">🚗 EN DRIVE</span>` : ''}</td>

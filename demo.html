@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulateur de commande — Mademoiselle Bobùn</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root { --noir:#0B0805; --noir2:#151009; --ivoire:#F4EDE0; --caramel:#E8912D; --violet:#9B78FF; --mono:'IBM Plex Mono',monospace; --sans:'Be Vietnam Pro',sans-serif; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:radial-gradient(ellipse at 50% 20%,#181026 0%,var(--noir) 70%); color:var(--ivoire); font-family:var(--sans); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:6vh 5vw; }
+    a { color:inherit; }
+    :focus-visible { outline:2px solid var(--caramel); outline-offset:3px; border-radius:6px; }
+    .card { width:min(460px,100%); background:var(--noir2); border:1px solid rgba(155,120,255,.3); border-radius:20px; padding:clamp(24px,4vw,38px); display:flex; flex-direction:column; gap:16px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+    .eyebrow { font-family:var(--mono); font-size:.62rem; letter-spacing:.16em; color:var(--violet); }
+    h1 { font-weight:900; font-size:1.5rem; }
+    p.lead { font-weight:300; font-size:.9rem; line-height:1.6; color:rgba(244,237,224,.75); }
+    label { font-family:var(--mono); font-size:.58rem; letter-spacing:.13em; color:rgba(244,237,224,.55); margin-bottom:-8px; }
+    input, select, textarea { background:rgba(244,237,224,.06); border:1px solid rgba(244,237,224,.18); border-radius:10px; color:var(--ivoire); font-family:var(--sans); font-size:.92rem; padding:12px 14px; width:100%; }
+    input.mono { font-family:var(--mono); letter-spacing:.06em; }
+    textarea { resize:vertical; font-weight:300; }
+    button { background:var(--violet); color:#0b0714; border:none; border-radius:999px; font-family:var(--sans); font-weight:800; font-size:.98rem; padding:15px; cursor:pointer; transition:filter .2s; }
+    button:hover { filter:brightness(1.12); }
+    button:disabled { opacity:.6; cursor:wait; }
+    .hint { font-family:var(--mono); font-size:.56rem; letter-spacing:.12em; color:rgba(244,237,224,.45); line-height:1.9; }
+    .err { color:#ff9d7a; font-size:.85rem; }
+    .ok { color:#86B27A; font-size:.9rem; line-height:1.6; }
+    .steps { list-style:none; display:flex; flex-direction:column; gap:6px; }
+    .steps li { font-size:.82rem; font-weight:300; color:rgba(244,237,224,.8); }
+    .steps li::before { content:'→ '; color:var(--violet); }
+    .keyrow { display:flex; gap:8px; }
+    .keyrow input { flex:1; }
+    .keyrow button { padding:12px 18px; font-size:.7rem; font-family:var(--mono); letter-spacing:.1em; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div id="login" style="display:flex;flex-direction:column;gap:14px">
+      <p class="eyebrow">🧪 OUTIL INTERNE</p>
+      <h1>Simulateur de commande</h1>
+      <p class="lead">Crée une commande <strong>démo à 0 €</strong> (paiement simulé) qui déclenche toute la chaîne réelle : dashboard, overlay, impression du ticket, WhatsApp (code + QR + bouton Drive), Supabase.</p>
+      <label for="key">CLÉ D'ACCÈS</label>
+      <div class="keyrow">
+        <input id="key" class="mono" type="password" placeholder="clé du dashboard" autocomplete="current-password">
+        <button id="enter" type="button">OK</button>
+      </div>
+      <p class="err" id="login-err"></p>
+    </div>
+
+    <form id="form" style="display:none;flex-direction:column;gap:16px" autocomplete="off">
+      <p class="eyebrow">🧪 SIMULER UNE COMMANDE PAYÉE</p>
+      <h1>Nouvelle démo</h1>
+      <label for="dish">PLAT (facultatif)</label>
+      <select id="dish"><option value="">Commande démo générique</option></select>
+      <label for="wa">NUMÉRO WHATSAPP (pour recevoir le code + QR + Drive)</label>
+      <input id="wa" class="mono" type="tel" inputmode="tel" placeholder="06 12 34 56 78" required>
+      <label for="note">NOTE (facultatif)</label>
+      <textarea id="note" rows="2" maxlength="400" placeholder="Ex. : test allergie, sans coriandre…"></textarea>
+      <button id="go" type="submit">🚀 SIMULER LA COMMANDE</button>
+      <p class="err" id="err" style="display:none"></p>
+      <div class="ok" id="done" style="display:none"></div>
+      <p class="hint">La commande apparaîtra dans le dashboard avec le badge 🧪 DÉMO et ne comptera pas dans le chiffre d'affaires. Ouvre le dashboard en parallèle pour voir l'overlay et l'impression.</p>
+    </form>
+  </main>
+
+  <script>
+    (() => {
+      const $ = s => document.querySelector(s);
+      let KEY = localStorage.getItem('bobun_dash_key') || '';
+
+      async function start() {
+        try {
+          const r = await fetch('/api/catalog', { headers: { 'x-dash-key': KEY } });
+          if (!r.ok) throw new Error('clé');
+          const items = (await r.json()).items.filter(i => !i.sup);
+          $('#dish').insertAdjacentHTML('beforeend', items.map(i => `<option value="${i.id}">${i.name}</option>`).join(''));
+        } catch (e) {
+          localStorage.removeItem('bobun_dash_key');
+          $('#login-err').textContent = KEY ? 'Clé refusée.' : '';
+          return;
+        }
+        $('#login').style.display = 'none';
+        $('#form').style.display = 'flex';
+      }
+
+      $('#enter').addEventListener('click', () => { KEY = $('#key').value.trim(); localStorage.setItem('bobun_dash_key', KEY); start(); });
+      $('#key').addEventListener('keydown', e => { if (e.key === 'Enter') $('#enter').click(); });
+
+      $('#form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const wa = $('#wa').value.trim();
+        const err = $('#err');
+        err.style.display = 'none';
+        if (wa.replace(/\D/g, '').length < 10) { err.textContent = 'Numéro WhatsApp invalide.'; err.style.display = 'block'; return; }
+        $('#go').disabled = true;
+        try {
+          const r = await fetch('/api/demo', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dash-key': KEY },
+            body: JSON.stringify({ wa, note: $('#note').value, item: $('#dish').value || undefined })
+          });
+          const d = await r.json();
+          if (!r.ok || !d.ok) throw new Error(d.error || 'échec');
+          $('#done').innerHTML = `✅ Démo créée — code <strong>${d.code}</strong>.<br>WhatsApp envoyé, ticket imprimé si l'imprimante est connectée.<br><a href="/merci.html?session_id=${d.session_id}" target="_blank" rel="noopener">→ Voir le parcours client (page de retrait + Drive)</a>`;
+          $('#done').style.display = 'block';
+          $('#go').disabled = false;
+        } catch (e2) {
+          err.textContent = e2.message; err.style.display = 'block';
+          $('#go').disabled = false;
+        }
+      });
+
+      if (KEY) start();
+    })();
+  </script>
+</body>
+</html>
