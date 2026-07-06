@@ -130,6 +130,8 @@
     .bt-btn:hover { border-color: var(--caramel); color: var(--caramel); }
     .bt-btn.on { color: var(--vert); border-color: rgba(46,204,113,.6); }
     .bt-btn.on::before { content: '● '; }
+    .chatbot-btn.off { color: #ff9d7a; border-color: rgba(255,157,122,.5); }
+    .chatbot-btn.off::before { content: '○ '; }
     .autop {
       font-family: var(--mono); font-size: .58rem; letter-spacing: .12em;
       color: rgba(244,237,224,.55); display: inline-flex; align-items: center; gap: 7px;
@@ -357,6 +359,7 @@
       <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE<span class="vn vn-btn">GỌI MÓN TẠI CHỖ</span></button>
       <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
+      <button id="chatbot-toggle" class="bt-btn chatbot-btn" title="Activer / désactiver le concierge WhatsApp">🤖 CHATBOT<span class="vn vn-btn">Trợ lý</span></button>
       <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
       <p class="meta" id="today-meta">—</p>
     </div>
@@ -916,9 +919,38 @@
         $('#empty').hidden = all.length > 0;
         connectStream();
         loadStats();
+        initChatbot();
         setInterval(() => load().catch(() => {}), 60000); // filet de sécurité
         setInterval(loadStats, 120000);
       }
+
+      /* ============ CONCIERGE WHATSAPP : activer / désactiver ============ */
+      function renderChatbot(on) {
+        const b = $('#chatbot-toggle');
+        b.classList.toggle('on', on);
+        b.classList.toggle('off', !on);
+        b.innerHTML = '🤖 CHATBOT ' + (on ? 'ON' : 'OFF') + '<span class="vn vn-btn">Trợ lý</span>';
+        b.title = on ? 'Concierge WhatsApp actif — clic pour désactiver' : 'Concierge WhatsApp désactivé — clic pour activer';
+      }
+      async function initChatbot() {
+        try {
+          const r = await fetch('/api/settings', { headers: { 'x-dash-key': KEY } });
+          renderChatbot(!!(await r.json()).chatbot);
+        } catch (e) {}
+      }
+      $('#chatbot-toggle').addEventListener('click', async () => {
+        const next = !$('#chatbot-toggle').classList.contains('on');
+        const b = $('#chatbot-toggle');
+        b.disabled = true;
+        try {
+          const r = await fetch('/api/settings', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dash-key': KEY },
+            body: JSON.stringify({ chatbot: next })
+          });
+          renderChatbot(!!(await r.json()).chatbot);
+        } catch (e) {}
+        b.disabled = false;
+      });
 
       /* ============ VUE MENU & PRIX ============ */
       const eurNum = c => (c / 100).toFixed(2).replace('.', ',') + ' €';

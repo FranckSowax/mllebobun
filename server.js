@@ -38,6 +38,15 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+// réglages persistants (volume) : activation du concierge WhatsApp
+let settings = { chatbot: true };
+try { settings = { ...settings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; } catch (e) {}
+function saveSettings() {
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings)); }
+  catch (e) { console.error('settings save:', e.message); }
+}
 
 // Supabase (optionnel) : durable + requêtable. Repli JSONL si non configuré.
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -781,6 +790,7 @@ async function handleWhapiBody(body) {
 
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
     if (!text) continue;
+    if (!settings.chatbot) { console.log('concierge désactivé, message ignoré:', from); continue; }
 
     // Tout message texte -> Concierge IA (le Drive est géré sur la page de retrait, pas sur WhatsApp)
     await conciergeReply(from, text).catch(e => console.error('concierge:', e.message));
@@ -880,6 +890,16 @@ app.get('/api/stats', checkKey, (req, res) => {
     totals: { orders: online + surplace, online, surplace, drive },
     byDay, topDishes, source: sb ? 'supabase' : 'volume'
   });
+});
+
+/* réglages (dashboard) : activer/désactiver le concierge WhatsApp */
+app.get('/api/settings', checkKey, (req, res) => res.json(settings));
+app.post('/api/settings', checkKey, (req, res) => {
+  const b = req.body || {};
+  if (typeof b.chatbot === 'boolean') settings.chatbot = b.chatbot;
+  saveSettings();
+  console.log('settings: chatbot', settings.chatbot ? 'ON' : 'OFF');
+  res.json(settings);
 });
 
 /* catalogue pour la prise de commande sur place (piloté par le menu) */
