@@ -31,6 +31,8 @@ const WHAPI_TOKEN = process.env.WHAPI_TOKEN || '';
 const WHAPI_API_URL = (process.env.WHAPI_API_URL || 'https://gate.whapi.cloud').replace(/\/$/, '');
 const TEAM_WHATSAPP = (process.env.TEAM_WHATSAPP || '').replace(/\D/g, '');
 const DASHBOARD_KEY = process.env.DASHBOARD_KEY || '';
+const MISTRAL_KEY = process.env.MISTRAL_API_KEY || '';
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // jeton dérivé pour sécuriser le webhook Whapi entrant
 const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
@@ -638,13 +640,16 @@ function menuDishes() {
 
 const recentPollReply = new Map(); // "from|dishId" -> ts (anti double-réponse)
 
+// texte d'une option de sondage (doit être IDENTIQUE à l'envoi pour retrouver le vote)
+function pollOptionText(d) { return `${dishEmoji(d.id)} ${d.name} — ${centsEur(d.amount)}`.slice(0, 100); }
+// WhatsApp identifie chaque option par sha256(texte) en base64 -> mapping vote->plat sans état
+function pollOptionId(d) { return crypto.createHash('sha256').update(pollOptionText(d)).digest('base64'); }
+
 async function sendMenuPoll(to) {
-  const dishes = menuDishes();
-  const options = dishes.map(d => `${dishEmoji(d.id)} ${d.name} — ${centsEur(d.amount)}`.slice(0, 100));
   return whapi('/messages/poll', {
     to,
     title: '📋 Notre carte — quel plat vous tente ? Votez, on vous envoie le lien pour commander 👇',
-    options,
+    options: menuDishes().map(pollOptionText),
     count: 1
   });
 }
@@ -662,6 +667,86 @@ async function replyDishFromPoll(to, dish) {
     await whapi('/messages/image', { to, media: SITE() + jpg, caption }).catch(e => console.error('poll reply img:', e.message));
   } else {
     await whapi('/messages/text', { to, body: caption }).catch(() => {});
+  }
+}
+
+/* ---------- Concierge IA (Mistral) : comprend un message libre et répond ---------- */
+
+const wa = d => String(d).replace(/\D/g, '') + '@s.whatsapp.net';
+
+async function mistralChat(messages, tools) {
+  const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${MISTRAL_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: MISTRAL_MODEL, messages, tools, tool_choice: 'auto', temperature: 0.3, max_tokens: 400 })
+  });
+  if (!r.ok) throw new Error('mistral ' + r.status + ' ' + (await r.text().catch(() => '')).slice(0, 200));
+  return r.json();
+}
+
+function conciergeTools() {
+  const ids = menuDishes().map(d => d.id);
+  const f = (name, description, properties, required) =>
+    ({ type: 'function', function: { name, description, parameters: { type: 'object', properties: properties || {}, required: required || [] } } });
+  return [
+    f('montrer_plat', 'Envoyer la photo, le prix et le lien de commande d’un plat précis que le client demande.', { dish_id: { type: 'string', enum: ids } }, ['dish_id']),
+    f('montrer_carte', 'Envoyer la carte complète (le client demande le menu, ce qu’on propose, ou hésite).'),
+    f('envoyer_lien_commande', 'Envoyer le lien pour commander/payer en ligne (le client veut commander).', { dish_id: { type: 'string', enum: ids } }),
+    f('parler_a_humain', 'Transférer à l’équipe : horaires, réclamation, allergie sérieuse, demande hors menu, ou si tu n’es pas sûr.', { resume: { type: 'string' } }, ['resume']),
+    f('repondre', 'Répondre par un court message (salutation, adresse, question simple). Ne donne jamais de prix ici.', { message: { type: 'string' } }, ['message'])
+  ];
+}
+
+function conciergeSystemPrompt() {
+  const carte = menuDishes().map(d => `- ${d.id}: ${d.name} (${centsEur(d.amount)})${d.description ? ' — ' + d.description : ''}`).join('\n');
+  return `Tu es l'assistant WhatsApp chaleureux de Mademoiselle Bobùn, cuisine vietnamienne à Bordeaux `
+    + `(200 bis rue Malbec, 33000 Bordeaux · 05 57 95 54 39). À emporter (retrait sur place) et livraison via Uber Eats / Deliveroo. `
+    + `Réponds toujours en français, ton chaleureux et concis (1–2 phrases, quelques emojis).\n\n`
+    + `CARTE (identifiant -> plat, prix, description) :\n${carte}\n\n`
+    + `Règles :\n`
+    + `- Comprends l'intention du client et APPELLE UN OUTIL.\n`
+    + `- Un plat précis demandé -> montrer_plat (bon dish_id).\n`
+    + `- Demande de carte / « vous avez quoi » / hésitation -> montrer_carte.\n`
+    + `- Veut commander/payer -> envoyer_lien_commande (avec dish_id si un plat est clair).\n`
+    + `- Salutation, adresse, question simple -> repondre.\n`
+    + `- Horaires, réclamation, allergie sérieuse, hors-menu, ou doute -> parler_a_humain.\n`
+    + `- Ne donne JAMAIS un prix toi-même : pour un plat, utilise montrer_plat (le prix est ajouté automatiquement).`;
+}
+
+async function conciergeReply(from, text) {
+  const dishes = menuDishes();
+  const byId = Object.fromEntries(dishes.map(d => [d.id, d]));
+  if (!MISTRAL_KEY) { await sendMenuPoll(wa(from)).catch(() => {}); return; } // repli : la carte-sondage
+
+  const data = await mistralChat(
+    [{ role: 'system', content: conciergeSystemPrompt() }, { role: 'user', content: text.slice(0, 500) }],
+    conciergeTools()
+  );
+  const msg = data.choices && data.choices[0] && data.choices[0].message;
+  const call = msg && msg.tool_calls && msg.tool_calls[0];
+  if (!call) {
+    if (msg && msg.content) await whapi('/messages/text', { to: from, body: msg.content.slice(0, 600) }).catch(() => {});
+    else await sendMenuPoll(wa(from)).catch(() => {});
+    return;
+  }
+  let args = {};
+  try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) {}
+  const name = call.function.name;
+  console.log('concierge:', from, '->', name, JSON.stringify(args));
+
+  if (name === 'montrer_plat' && byId[args.dish_id]) {
+    await replyDishFromPoll(from, byId[args.dish_id]);
+  } else if (name === 'envoyer_lien_commande') {
+    const d = byId[args.dish_id];
+    const url = SITE() + (d ? dishPage(d.cat) : '/bobunbeef/');
+    await whapi('/messages/text', { to: from, body: `🛒 Pour commander et payer en ligne :\n👉 ${url}\n\nVous recevrez votre code de retrait ici même 🙌` }).catch(() => {});
+  } else if (name === 'parler_a_humain') {
+    await whapi('/messages/text', { to: from, body: 'Je transmets à l’équipe, on vous répond très vite 🙏 (ou appelez le 05 57 95 54 39).' }).catch(() => {});
+    if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `💬 Client ${from} à traiter : « ${text.slice(0, 300)} »${args.resume ? '\n(' + args.resume + ')' : ''}` }).catch(() => {});
+  } else if (name === 'repondre') {
+    await whapi('/messages/text', { to: from, body: (args.message || 'Bonjour ! Comment puis-je vous aider ? 😊').slice(0, 600) }).catch(() => {});
+  } else { // montrer_carte + repli
+    await sendMenuPoll(wa(from)).catch(() => {});
   }
 }
 
@@ -697,19 +782,24 @@ async function handleWhapiBody(body) {
   for (const m of messages) {
     if (!m) continue;
 
-    // 0) VOTE au sondage-carte : arrive avec from_me:true, chat_id = le client,
-    //    l'option choisie = celle dont poll.results[].voters contient ce chat_id.
-    if (m.type === 'poll_update' && m.poll && Array.isArray(m.poll.results)) {
-      const voter = String(m.chat_id || '').replace(/\D/g, '');
-      if (!voter) continue;
+    // 0) VOTE au sondage-carte : ce canal envoie type:"action" + action.type:"vote",
+    //    action.votes = [sha256(texte option) en base64]. (fallback: poll_update/poll.results)
+    if ((m.type === 'action' && m.action && m.action.type === 'vote') ||
+        (m.type === 'poll_update' && m.poll && Array.isArray(m.poll.results))) {
+      const voter = String(m.chat_id || m.from || '').replace(/\D/g, '');
       const dishes = menuDishes();
-      for (const r of m.poll.results) {
-        const picked = (r.voters || []).some(v => String(v).replace(/\D/g, '') === voter);
-        if (!picked) continue;
-        const norm = String(r.name || '').toLowerCase();
-        const d = dishes.find(x => norm.includes(x.name.toLowerCase()));
-        if (d) await replyDishFromPoll(voter, d);
+      let picked = [];
+      if (m.action && Array.isArray(m.action.votes)) {
+        const byHash = {};
+        dishes.forEach(d => { byHash[pollOptionId(d)] = d; });
+        picked = m.action.votes.map(v => byHash[v]).filter(Boolean);
+      } else {
+        picked = m.poll.results
+          .filter(r => (r.voters || []).some(v => String(v).replace(/\D/g, '') === voter))
+          .map(r => dishes.find(x => String(r.name || '').toLowerCase().includes(x.name.toLowerCase())))
+          .filter(Boolean);
       }
+      for (const d of picked) if (voter) await replyDishFromPoll(voter, d);
       continue;
     }
 
@@ -781,7 +871,10 @@ async function handleWhapiBody(body) {
 
     // 5) résilience (état perdu au redémarrage) : un texte d'un client avec commande récente non encore en drive = son véhicule
     const recent = findRecentOrderByPhone(from);
-    if (recent && !recent.drive) { await sendParkButton(recent, from, text.slice(0, 120)); }
+    if (recent && !recent.drive) { await sendParkButton(recent, from, text.slice(0, 120)); continue; }
+
+    // 6) sinon -> Concierge IA : comprend la demande et répond (photo/prix/lien/carte)
+    await conciergeReply(from, text).catch(e => console.error('concierge:', e.message));
   }
 }
 
