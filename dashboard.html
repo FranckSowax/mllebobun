@@ -165,8 +165,12 @@
     }
 
     /* ---- commande sur place ---- */
-    .new-order { color: var(--caramel); border-color: rgba(232,145,45,.5); }
+    .new-order {
+      color: var(--caramel); border-color: rgba(232,145,45,.5);
+      display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2;
+    }
     .new-order:hover { background: rgba(232,145,45,.1); }
+    .vn-btn { display: block; font-size: .5rem; font-weight: 400; letter-spacing: .1em; color: rgba(232,145,45,.7); margin-top: 2px; }
 
     .badge.sp { background: rgba(232,145,45,.14); color: var(--caramel); border-color: rgba(232,145,45,.45); }
     .badge.drv { background: rgba(61,139,255,.14); color: #7db4ff; border-color: rgba(61,139,255,.5); margin-top: 5px; display: inline-block; }
@@ -290,7 +294,7 @@
   <header hidden>
     <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span><span class="vn vn-h1">Đơn hàng</span></h1>
     <div class="print-ctl">
-      <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE</button>
+      <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE<span class="vn vn-btn">GỌI MÓN TẠI CHỖ</span></button>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
       <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
       <p class="meta" id="today-meta">—</p>
