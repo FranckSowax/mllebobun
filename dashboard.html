@@ -104,6 +104,26 @@
     .print-btn:active { transform: scale(.92); }
     .print-btn.done { border-color: rgba(46,204,113,.6); }
 
+    /* ---- sous-lignes vietnamiennes ---- */
+    .vn {
+      display: block;
+      font-style: normal;
+      font-weight: 400;
+      color: rgba(232, 145, 45, .75);
+      letter-spacing: .06em;
+    }
+    .vn-h1 { font-size: .85rem; font-weight: 600; margin-top: 2px; }
+    .vn-h2 { font-size: .8rem; font-weight: 600; margin-top: 3px; color: rgba(232,145,45,.8); }
+    .stat .vn { font-size: .56rem; letter-spacing: .1em; margin-top: 3px; color: rgba(232,145,45,.65); }
+    .vn-big {
+      font-size: .42em;
+      font-weight: 700;
+      letter-spacing: .08em;
+      margin-top: 6px;
+      color: rgba(255, 255, 255, .92);
+      text-shadow: 0 2px 20px rgba(0,0,0,.5);
+    }
+
     /* ---- commande sur place ---- */
     .new-order { color: var(--caramel); border-color: rgba(232,145,45,.5); }
     .new-order:hover { background: rgba(232,145,45,.1); }
@@ -228,7 +248,7 @@
   </div>
 
   <header hidden>
-    <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span></h1>
+    <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span><span class="vn vn-h1">Đơn hàng</span></h1>
     <div class="print-ctl">
       <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE</button>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
@@ -238,9 +258,9 @@
   </header>
 
   <div class="stats" hidden>
-    <div class="stat"><b id="st-count">0</b><span>COMMANDES AUJOURD'HUI</span></div>
-    <div class="stat"><b id="st-total">0 €</b><span>ENCAISSÉ AUJOURD'HUI</span></div>
-    <div class="stat"><b id="st-bols">0</b><span>BOLS AUJOURD'HUI</span></div>
+    <div class="stat"><b id="st-count">0</b><span>COMMANDES AUJOURD'HUI<em class="vn">ĐƠN HÔM NAY</em></span></div>
+    <div class="stat"><b id="st-total">0 €</b><span>ENCAISSÉ AUJOURD'HUI<em class="vn">DOANH THU HÔM NAY</em></span></div>
+    <div class="stat"><b id="st-bols">0</b><span>BOLS AUJOURD'HUI<em class="vn">SỐ TÔ HÔM NAY</em></span></div>
   </div>
 
   <div class="tablewrap" hidden>
@@ -254,24 +274,24 @@
   </div>
 
   <div id="flash" role="alert">
-    <div class="big">🍜 NOUVELLE COMMANDE</div>
+    <div class="big">🍜 NOUVELLE COMMANDE<span class="vn vn-big">ĐƠN HÀNG MỚI</span></div>
     <div class="code-big" id="flash-code"></div>
-    <div class="hint">TOUCHER POUR FERMER</div>
+    <div class="hint">TOUCHER POUR FERMER · CHẠM ĐỂ ĐÓNG</div>
   </div>
 
   <!-- overlay bleu : client garé devant (Drive) -->
   <div id="flash-drive" role="alert">
-    <div class="big">🚗 CLIENT EN DRIVE — SORTIR LA COMMANDE</div>
+    <div class="big">🚗 CLIENT EN DRIVE — SORTIR LA COMMANDE<span class="vn vn-big">KHÁCH ĐÃ ĐỖ XE — MANG ĐƠN RA XE</span></div>
     <div class="code-big" id="fd-code"></div>
     <div class="fd-vehicle" id="fd-vehicle"></div>
-    <div class="hint">TOUCHER POUR FERMER</div>
+    <div class="hint">TOUCHER POUR FERMER · CHẠM ĐỂ ĐÓNG</div>
   </div>
 
   <!-- modal commande sur place -->
   <div id="modal" hidden>
     <div class="modal-box">
       <div class="modal-head">
-        <h2>Commande sur place</h2>
+        <h2>Commande sur place<span class="vn vn-h2">Gọi món tại chỗ</span></h2>
         <button id="m-close" aria-label="Fermer">✕</button>
       </div>
       <div id="cat-list" class="cat-list">Chargement…</div>
