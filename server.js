@@ -627,21 +627,33 @@ function menuDishes() {
 
 const recentCard = new Map(); // "from|dishId" -> ts (anti double-envoi)
 
-// fiche plat : photo + prix + description + lien de commande
+// bouton « Commander » (URL) avec repli lien texte
+async function sendOrderButton(to, url, dishId) {
+  await whapi('/messages/interactive', {
+    to, type: 'button',
+    body: { text: '🛒 Prêt à commander ? Paiement en ligne, retrait sur place.' },
+    footer: { text: 'Mademoiselle Bobùn' },
+    action: { buttons: [{ type: 'url', title: '🛒 Commander', id: `order_${dishId || 'menu'}`, url }] }
+  }).catch(async e => {
+    console.error('bouton commander:', e.message);
+    await whapi('/messages/text', { to, body: `👉 Commander : ${url}` }).catch(() => {});
+  });
+}
+
+// fiche plat : photo + prix + description, PUIS un bouton « Commander »
 async function sendDishCard(to, dish) {
   const key = to + '|' + dish.id;
   const now = Date.now();
   if (recentCard.get(key) > now - 30000) return;
   recentCard.set(key, now);
-  const url = SITE() + dishPage(dish.cat);
-  const caption = `${dishEmoji(dish.id)} *${dish.name}* — ${centsEur(dish.amount)}\n`
-    + `${dish.description || ''}\n\n👉 Commander : ${url}`;
+  const caption = `${dishEmoji(dish.id)} *${dish.name}* — ${centsEur(dish.amount)}\n${dish.description || ''}`;
   const jpg = dishJpg(dish);
   if (jpg) {
     await whapi('/messages/image', { to, media: SITE() + jpg, caption }).catch(e => console.error('dish card img:', e.message));
   } else {
     await whapi('/messages/text', { to, body: caption }).catch(() => {});
   }
+  await sendOrderButton(to, SITE() + dishPage(dish.cat), dish.id);
 }
 
 // la carte en texte (liste des plats + prix)
@@ -671,24 +683,29 @@ function conciergeTools() {
     f('montrer_plat', 'Envoyer la photo, le prix et le lien de commande d’un plat précis que le client demande.', { dish_id: { type: 'string', enum: ids } }, ['dish_id']),
     f('montrer_carte', 'Envoyer la carte complète (le client demande le menu, ce qu’on propose, ou hésite).'),
     f('envoyer_lien_commande', 'Envoyer le lien pour commander/payer en ligne (le client veut commander).', { dish_id: { type: 'string', enum: ids } }),
-    f('parler_a_humain', 'Transférer à l’équipe : horaires, réclamation, allergie sérieuse, demande hors menu, ou si tu n’es pas sûr.', { resume: { type: 'string' } }, ['resume']),
-    f('repondre', 'Répondre par un court message (salutation, adresse, question simple). Ne donne jamais de prix ici.', { message: { type: 'string' } }, ['message'])
+    f('parler_a_humain', 'Transférer à l’équipe UNIQUEMENT pour : réclamation, problème de commande, allergie sérieuse, ou demande vraiment hors sujet.', { resume: { type: 'string' } }, ['resume']),
+    f('repondre', 'Répondre par un court message : horaires, adresse, téléphone, livraison, mode de retrait, salutation. Ne donne jamais de prix de plat ici.', { message: { type: 'string' } }, ['message'])
   ];
 }
 
 function conciergeSystemPrompt() {
   const carte = menuDishes().map(d => `- ${d.id}: ${d.name} (${centsEur(d.amount)})${d.description ? ' — ' + d.description : ''}`).join('\n');
-  return `Tu es l'assistant WhatsApp chaleureux de Mademoiselle Bobùn, cuisine vietnamienne à Bordeaux `
-    + `(200 bis rue Malbec, 33000 Bordeaux · 05 57 95 54 39). À emporter (retrait sur place) et livraison via Uber Eats / Deliveroo. `
+  return `Tu es l'assistant WhatsApp chaleureux de Mademoiselle Bobùn, restaurant vietnamien (ghost kitchen) à Bordeaux. `
     + `Réponds toujours en français, ton chaleureux et concis (1–2 phrases, quelques emojis).\n\n`
+    + `INFOS PRATIQUES (utilise-les pour répondre DIRECTEMENT, ne les invente jamais) :\n`
+    + `- Horaires : du lundi au vendredi 11h45–15h et 18h30–22h ; samedi et dimanche 18h–22h30.\n`
+    + `- Adresse : 200 bis rue Malbec, 33000 Bordeaux (retrait sur place / Click & Collect).\n`
+    + `- Téléphone : 05 57 95 54 39 · Email : mademoisellebobun@gmail.com\n`
+    + `- Commande : à emporter avec paiement en ligne (retrait sur place), ou livraison via Uber Eats et Deliveroo.\n`
+    + `- Spécialités : Bo Bún, Loc Lac (riz sauté au bœuf), nems.\n\n`
     + `CARTE (identifiant -> plat, prix, description) :\n${carte}\n\n`
     + `Règles :\n`
     + `- Comprends l'intention du client et APPELLE UN OUTIL.\n`
     + `- Un plat précis demandé -> montrer_plat (bon dish_id).\n`
     + `- Demande de carte / « vous avez quoi » / hésitation -> montrer_carte.\n`
     + `- Veut commander/payer -> envoyer_lien_commande (avec dish_id si un plat est clair).\n`
-    + `- Salutation, adresse, question simple -> repondre.\n`
-    + `- Horaires, réclamation, allergie sérieuse, hors-menu, ou doute -> parler_a_humain.\n`
+    + `- Horaires, adresse, téléphone, livraison, mode de retrait, salutation -> repondre (avec les infos pratiques ci-dessus).\n`
+    + `- Seulement si réclamation, problème de commande, allergie sérieuse, ou demande vraiment hors sujet -> parler_a_humain.\n`
     + `- Ne donne JAMAIS un prix toi-même : pour un plat, utilise montrer_plat (le prix est ajouté automatiquement).`;
 }
 
@@ -717,8 +734,7 @@ async function conciergeReply(from, text) {
     await sendDishCard(from, byId[args.dish_id]);
   } else if (name === 'envoyer_lien_commande') {
     const d = byId[args.dish_id];
-    const url = SITE() + (d ? dishPage(d.cat) : '/bobunbeef/');
-    await whapi('/messages/text', { to: from, body: `🛒 Pour commander et payer en ligne :\n👉 ${url}\n\nVous recevrez votre code de retrait ici même 🙌` }).catch(() => {});
+    await sendOrderButton(from, SITE() + (d ? dishPage(d.cat) : '/bobunbeef/'), d && d.id);
   } else if (name === 'parler_a_humain') {
     await whapi('/messages/text', { to: from, body: 'Je transmets à l’équipe, on vous répond très vite 🙏 (ou appelez le 05 57 95 54 39).' }).catch(() => {});
     if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `💬 Client ${from} à traiter : « ${text.slice(0, 300)} »${args.resume ? '\n(' + args.resume + ')' : ''}` }).catch(() => {});
