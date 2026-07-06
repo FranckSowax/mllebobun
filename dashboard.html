@@ -115,6 +115,7 @@
     .vn-h1 { font-size: .85rem; font-weight: 600; margin-top: 2px; }
     .vn-h2 { font-size: .8rem; font-weight: 600; margin-top: 3px; color: rgba(232,145,45,.8); }
     .stat .vn { font-size: .56rem; letter-spacing: .1em; margin-top: 3px; color: rgba(232,145,45,.65); }
+    .vn-item { font-size: .74rem; font-weight: 400; letter-spacing: 0; color: rgba(232,145,45,.72); margin-top: 1px; }
     .vn-big {
       font-size: .42em;
       font-weight: 700;
@@ -315,8 +316,31 @@
       const hhmm = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const isToday = iso => new Date(iso).toDateString() === new Date().toDateString();
 
+      // traduction vietnamienne des plats
+      const VN_ITEMS = {
+        'bo bun boeuf': 'Bún bò',
+        'bo bun poulet': 'Bún gà',
+        'bo bun crevette': 'Bún tôm',
+        'bo bun veggie': 'Bún chay',
+        'loc lac boeuf': 'Bò lúc lắc',
+        'loc lac poulet': 'Gà lúc lắc',
+        'loc lac veggie': 'Đậu hũ lúc lắc',
+        'supplement 2 nems': 'Thêm 2 chả giò',
+        'supplement poulet': 'Thêm gà',
+        'supplement boeuf': 'Thêm bò',
+        'supplement tofu marine': 'Thêm đậu hũ',
+        'supplement oeuf au plat': 'Thêm trứng ốp la'
+      };
+      const normFr = s => String(s).toLowerCase().normalize('NFD')
+        .replace(/[̀-ͯ]/g, '').replace(/œ/g, 'oe')
+        .replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+      const vnItem = name => VN_ITEMS[normFr(name)] || '';
+
       function rowHtml(o, fresh) {
-        const items = o.items.map(i => `${i.qty} × ${i.name}`).join('<br>');
+        const items = o.items.map(i => {
+          const vn = vnItem(i.name);
+          return `${i.qty} × ${i.name}` + (vn ? `<span class="vn vn-item">${i.qty} × ${vn}</span>` : '');
+        }).join('<br>');
         const d = new Date(o.date);
         const when = isToday(o.date) ? hhmm(o.date) : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + ' ' + hhmm(o.date);
         return `<tr class="${fresh ? 'fresh' : ''}" data-id="${o.sessionId}">
