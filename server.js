@@ -549,19 +549,6 @@ app.post('/api/demo', checkKey, async (req, res) => {
   }
 });
 
-/* envoi du menu-sondage (poll) à un numéro */
-app.post('/api/menu-poll', checkKey, async (req, res) => {
-  try {
-    const to = frPhoneToWa((req.body || {}).wa);
-    if (to.length < 10 || to.length > 15) return res.status(400).json({ error: 'Numéro WhatsApp requis.' });
-    const r = await sendMenuPoll(to + '@s.whatsapp.net');
-    res.json({ ok: !!(r && r.sent), id: r && r.message && r.message.id, options: menuDishes().length });
-  } catch (e) {
-    console.error('menu-poll:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 /* Code de retrait affiché sur merci.html */
 app.get('/api/session/:id', async (req, res) => {
   const id = req.params.id;
@@ -638,41 +625,33 @@ function menuDishes() {
     .sort((a, b) => (a.sort || 0) - (b.sort || 0));
 }
 
-const recentPollReply = new Map(); // "from|dishId" -> ts (anti double-réponse)
+const recentCard = new Map(); // "from|dishId" -> ts (anti double-envoi)
 
-// texte d'une option de sondage (doit être IDENTIQUE à l'envoi pour retrouver le vote)
-function pollOptionText(d) { return `${dishEmoji(d.id)} ${d.name} — ${centsEur(d.amount)}`.slice(0, 100); }
-// WhatsApp identifie chaque option par sha256(texte) en base64 -> mapping vote->plat sans état
-function pollOptionId(d) { return crypto.createHash('sha256').update(pollOptionText(d)).digest('base64'); }
-
-async function sendMenuPoll(to) {
-  return whapi('/messages/poll', {
-    to,
-    title: '📋 Notre carte — quel plat vous tente ? Votez, on vous envoie le lien pour commander 👇',
-    options: menuDishes().map(pollOptionText),
-    count: 1
-  });
-}
-
-async function replyDishFromPoll(to, dish) {
+// fiche plat : photo + prix + description + lien de commande
+async function sendDishCard(to, dish) {
   const key = to + '|' + dish.id;
   const now = Date.now();
-  if (recentPollReply.get(key) > now - 30000) return;
-  recentPollReply.set(key, now);
+  if (recentCard.get(key) > now - 30000) return;
+  recentCard.set(key, now);
   const url = SITE() + dishPage(dish.cat);
   const caption = `${dishEmoji(dish.id)} *${dish.name}* — ${centsEur(dish.amount)}\n`
     + `${dish.description || ''}\n\n👉 Commander : ${url}`;
   const jpg = dishJpg(dish);
   if (jpg) {
-    await whapi('/messages/image', { to, media: SITE() + jpg, caption }).catch(e => console.error('poll reply img:', e.message));
+    await whapi('/messages/image', { to, media: SITE() + jpg, caption }).catch(e => console.error('dish card img:', e.message));
   } else {
     await whapi('/messages/text', { to, body: caption }).catch(() => {});
   }
 }
 
-/* ---------- Concierge IA (Mistral) : comprend un message libre et répond ---------- */
+// la carte en texte (liste des plats + prix)
+async function sendCarte(to) {
+  const lines = menuDishes().map(d => `${dishEmoji(d.id)} *${d.name}* — ${centsEur(d.amount)}`).join('\n');
+  const body = `📋 *Notre carte*\n\n${lines}\n\nDites-moi le plat qui vous tente, je vous envoie la photo et le lien pour commander 😊`;
+  return whapi('/messages/text', { to, body }).catch(() => {});
+}
 
-const wa = d => String(d).replace(/\D/g, '') + '@s.whatsapp.net';
+/* ---------- Concierge IA (Mistral) : comprend un message libre et répond ---------- */
 
 async function mistralChat(messages, tools) {
   const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -716,7 +695,7 @@ function conciergeSystemPrompt() {
 async function conciergeReply(from, text) {
   const dishes = menuDishes();
   const byId = Object.fromEntries(dishes.map(d => [d.id, d]));
-  if (!MISTRAL_KEY) { await sendMenuPoll(wa(from)).catch(() => {}); return; } // repli : la carte-sondage
+  if (!MISTRAL_KEY) { await sendCarte(from); return; } // repli sans clé : la carte en texte
 
   const data = await mistralChat(
     [{ role: 'system', content: conciergeSystemPrompt() }, { role: 'user', content: text.slice(0, 500) }],
@@ -726,7 +705,7 @@ async function conciergeReply(from, text) {
   const call = msg && msg.tool_calls && msg.tool_calls[0];
   if (!call) {
     if (msg && msg.content) await whapi('/messages/text', { to: from, body: msg.content.slice(0, 600) }).catch(() => {});
-    else await sendMenuPoll(wa(from)).catch(() => {});
+    else await sendCarte(from);
     return;
   }
   let args = {};
@@ -735,7 +714,7 @@ async function conciergeReply(from, text) {
   console.log('concierge:', from, '->', name, JSON.stringify(args));
 
   if (name === 'montrer_plat' && byId[args.dish_id]) {
-    await replyDishFromPoll(from, byId[args.dish_id]);
+    await sendDishCard(from, byId[args.dish_id]);
   } else if (name === 'envoyer_lien_commande') {
     const d = byId[args.dish_id];
     const url = SITE() + (d ? dishPage(d.cat) : '/bobunbeef/');
@@ -746,7 +725,7 @@ async function conciergeReply(from, text) {
   } else if (name === 'repondre') {
     await whapi('/messages/text', { to: from, body: (args.message || 'Bonjour ! Comment puis-je vous aider ? 😊').slice(0, 600) }).catch(() => {});
   } else { // montrer_carte + repli
-    await sendMenuPoll(wa(from)).catch(() => {});
+    await sendCarte(from);
   }
 }
 
@@ -781,27 +760,6 @@ async function handleWhapiBody(body) {
   console.log('whapi in:', JSON.stringify(body).slice(0, 1200));
   for (const m of messages) {
     if (!m) continue;
-
-    // 0) VOTE au sondage-carte : ce canal envoie type:"action" + action.type:"vote",
-    //    action.votes = [sha256(texte option) en base64]. (fallback: poll_update/poll.results)
-    if ((m.type === 'action' && m.action && m.action.type === 'vote') ||
-        (m.type === 'poll_update' && m.poll && Array.isArray(m.poll.results))) {
-      const voter = String(m.chat_id || m.from || '').replace(/\D/g, '');
-      const dishes = menuDishes();
-      let picked = [];
-      if (m.action && Array.isArray(m.action.votes)) {
-        const byHash = {};
-        dishes.forEach(d => { byHash[pollOptionId(d)] = d; });
-        picked = m.action.votes.map(v => byHash[v]).filter(Boolean);
-      } else {
-        picked = m.poll.results
-          .filter(r => (r.voters || []).some(v => String(v).replace(/\D/g, '') === voter))
-          .map(r => dishes.find(x => String(r.name || '').toLowerCase().includes(x.name.toLowerCase())))
-          .filter(Boolean);
-      }
-      for (const d of picked) if (voter) await replyDishFromPoll(voter, d);
-      continue;
-    }
 
     if (m.from_me) continue;
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
