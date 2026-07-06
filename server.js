@@ -149,6 +149,40 @@ const CATALOG = {
 
 const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/'];
 
+// Menu piloté par Supabase (prix, descriptions, images). Repli sur CATALOG codé en dur.
+let MENU = {};   // id -> { id, cat, name, name_vn, description, amount, image, sup, active }
+function catItem(id) {
+  const m = MENU[id];
+  if (m && m.active !== false) return m;
+  const c = CATALOG[id];
+  return c ? { id, name: c.name, amount: c.amount, description: c.description || '', sup: !!c.sup, active: true } : null;
+}
+function effectiveCatalog() {
+  const out = {};
+  for (const [id, c] of Object.entries(CATALOG)) {
+    out[id] = { id, name: c.name, amount: c.amount, description: c.description || '', sup: !!c.sup, active: true, name_vn: '' };
+  }
+  for (const [id, m] of Object.entries(MENU)) if (m.active !== false) out[id] = m; else delete out[id];
+  return out;
+}
+async function sbLoadMenu() {
+  if (!sb) return;
+  try {
+    const { data, error } = await sb.from('menu_items').select('*').order('sort_order', { ascending: true });
+    if (error) throw error;
+    const m = {};
+    for (const r of (data || [])) {
+      m[r.id] = {
+        id: r.id, cat: r.cat, name: r.name, name_vn: r.name_vn || '',
+        description: r.description || '', amount: r.amount, image: r.image || '',
+        sup: !!r.is_supplement, active: r.active !== false, sort: r.sort_order || 0
+      };
+    }
+    MENU = m;
+    console.log(`supabase: ${Object.keys(m).length} articles de menu chargés`);
+  } catch (e) { console.error('supabase menu:', e.message); }
+}
+
 /* ---------- Persistance (JSONL sur volume) ---------- */
 
 let orders = [];
@@ -357,9 +391,9 @@ app.post('/api/checkout', async (req, res) => {
     const { items, note, page, wa } = req.body || {};
 
     const valid = (Array.isArray(items) ? items : [])
-      .filter(i => i && CATALOG[i.id] && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20);
+      .filter(i => i && catItem(i.id) && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20);
 
-    if (!valid.some(i => !CATALOG[i.id].sup)) {
+    if (!valid.some(i => !catItem(i.id).sup)) {
       return res.status(400).json({ error: 'Ajoutez au moins un bol.' });
     }
 
@@ -368,17 +402,17 @@ app.post('/api/checkout', async (req, res) => {
       return res.status(400).json({ error: 'Numéro WhatsApp requis pour le code de retrait.' });
     }
 
-    const line_items = valid.map(i => ({
-      quantity: i.qty,
-      price_data: {
-        currency: 'eur',
-        unit_amount: CATALOG[i.id].amount,
-        product_data: Object.assign(
-          { name: CATALOG[i.id].name },
-          CATALOG[i.id].description ? { description: CATALOG[i.id].description } : {}
-        )
-      }
-    }));
+    const line_items = valid.map(i => {
+      const c = catItem(i.id);
+      return {
+        quantity: i.qty,
+        price_data: {
+          currency: 'eur',
+          unit_amount: c.amount,
+          product_data: Object.assign({ name: c.name }, c.description ? { description: c.description } : {})
+        }
+      };
+    });
 
     const cleanNote = String(note || '').slice(0, 400).trim();
     const code = pickupCode();
@@ -607,13 +641,94 @@ app.get('/api/stats', checkKey, (req, res) => {
   });
 });
 
-/* catalogue pour la prise de commande sur place */
+/* catalogue pour la prise de commande sur place (piloté par le menu) */
 app.get('/api/catalog', checkKey, (req, res) => {
+  const cat = effectiveCatalog();
   res.json({
-    items: Object.entries(CATALOG).map(([id, c]) => ({
-      id, name: c.name, amount: c.amount, sup: !!c.sup
+    items: Object.values(cat)
+      .sort((a, b) => (a.sort || 0) - (b.sort || 0))
+      .map(c => ({ id: c.id, name: c.name, name_vn: c.name_vn || '', amount: c.amount, sup: !!c.sup }))
+  });
+});
+
+/* menu public (pour synchroniser les prix affichés sur le site) */
+app.get('/api/menu/public', (req, res) => {
+  const cat = effectiveCatalog();
+  res.json({
+    items: Object.values(cat).map(c => ({
+      id: c.id, cat: c.cat || (c.sup ? 'supplement' : ''), name: c.name,
+      name_vn: c.name_vn || '', description: c.description || '',
+      amount: c.amount, image: c.image || '', sup: !!c.sup
     }))
   });
+});
+
+/* ---------- Gestion du menu (dashboard, Supabase requis) ---------- */
+
+app.get('/api/menu', checkKey, (req, res) => {
+  const items = Object.values(effectiveCatalog())
+    .sort((a, b) => (a.sort || 0) - (b.sort || 0) || a.name.localeCompare(b.name));
+  res.json({ items, editable: !!sb });
+});
+
+app.post('/api/menu', checkKey, async (req, res) => {
+  if (!sb) return res.status(503).json({ error: 'Activez Supabase (clé service_role) pour modifier le menu.' });
+  try {
+    const b = req.body || {};
+    let id = String(b.id || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 40);
+    if (!id) id = 'plat_' + Date.now().toString(36);
+    const name = String(b.name || '').slice(0, 80).trim();
+    if (!name) return res.status(400).json({ error: 'Le nom est requis.' });
+    const amount = Math.max(0, Math.round(Number(b.amount) || 0));
+    const row = {
+      id, cat: ['bobun', 'loclac', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
+      name, name_vn: String(b.name_vn || '').slice(0, 80),
+      description: String(b.description || '').slice(0, 400),
+      amount, image: String(b.image || '').slice(0, 400),
+      is_supplement: b.cat === 'supplement' || !!b.sup,
+      active: b.active !== false, sort_order: Number(b.sort) || 0,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await sb.from('menu_items').upsert(row, { onConflict: 'id' });
+    if (error) throw error;
+    await sbLoadMenu();
+    res.json({ ok: true, id });
+  } catch (e) {
+    console.error('menu save:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/menu/delete', checkKey, async (req, res) => {
+  if (!sb) return res.status(503).json({ error: 'Supabase requis.' });
+  try {
+    const id = String((req.body || {}).id || '');
+    const { error } = await sb.from('menu_items').delete().eq('id', id);
+    if (error) throw error;
+    await sbLoadMenu();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* upload d'une image de plat vers Supabase Storage (dataURL base64) */
+app.post('/api/menu/upload', checkKey, express.json({ limit: '6mb' }), async (req, res) => {
+  if (!sb) return res.status(503).json({ error: 'Supabase requis.' });
+  try {
+    const { dataUrl, name } = req.body || {};
+    const m = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/.exec(String(dataUrl || ''));
+    if (!m) return res.status(400).json({ error: 'Image invalide (png, jpg ou webp).' });
+    const buf = Buffer.from(m[3], 'base64');
+    if (buf.length > 5 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 5 Mo).' });
+    const ext = m[2].replace('jpeg', 'jpg');
+    const fname = `${Date.now().toString(36)}-${String(name || 'plat').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20)}.${ext}`;
+    const { error } = await sb.storage.from('menu').upload(fname, buf, { contentType: m[1], upsert: true });
+    if (error) throw error;
+    const { data } = sb.storage.from('menu').getPublicUrl(fname);
+    res.json({ ok: true, url: data.publicUrl });
+  } catch (e) {
+    console.error('upload:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /* commande prise SUR PLACE depuis le dashboard (encaissement au comptoir) */
@@ -621,7 +736,7 @@ app.post('/api/orders/manual', checkKey, (req, res) => {
   try {
     const { items, note } = req.body || {};
     const valid = (Array.isArray(items) ? items : [])
-      .filter(i => i && CATALOG[i.id] && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 30);
+      .filter(i => i && catItem(i.id) && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 30);
     if (!valid.length) return res.status(400).json({ error: 'Aucun article.' });
     const now = new Date();
     const order = {
@@ -630,9 +745,9 @@ app.post('/api/orders/manual', checkKey, (req, res) => {
       code: pickupCode(),
       date: now.toISOString(),
       items: valid.map(i => ({
-        name: CATALOG[i.id].name, qty: i.qty, amount: CATALOG[i.id].amount * i.qty
+        name: catItem(i.id).name, qty: i.qty, amount: catItem(i.id).amount * i.qty
       })),
-      amount: valid.reduce((s, i) => s + CATALOG[i.id].amount * i.qty, 0),
+      amount: valid.reduce((s, i) => s + catItem(i.id).amount * i.qty, 0),
       note: String(note || '').slice(0, 400).trim(),
       phone: '', email: '',
       status: 'sur place'
@@ -698,4 +813,5 @@ app.listen(port, () => {
   console.log(`Mademoiselle Bobùn en ligne sur :${port} · commandes chargées : ${orders.length}`);
   configureWhapiWebhook();
   sbLoad();
+  sbLoadMenu();
 });
