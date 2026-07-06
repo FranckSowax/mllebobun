@@ -307,19 +307,26 @@ const DRIVE_TTL = 45 * 60 * 1000;
 const awaitingVehicle = new Map(); // téléphone -> { sessionId, until } : on attend la description du véhicule
 const awaitingPark = new Map();    // téléphone -> { sessionId, vehicle, until } : on attend le clic « garé »
 
-// itinéraire via un bouton CTA URL (repli texte)
+// itinéraire via boutons interactifs Whapi (url + appel), repli texte
 async function sendItinerary(to) {
   const body = '🚗 *Option Drive* — on apporte votre commande directement à votre voiture !\n'
     + 'Garez-vous à proximité du *200 bis rue Malbec, Bordeaux*.';
   try {
     await whapi('/messages/interactive', {
-      to, type: 'cta_url',
+      to,
+      type: 'button',
       body: { text: body },
-      action: { name: 'cta_url', parameters: { display_text: '🧭 Voir l’itinéraire', url: MAPS_URL } }
+      footer: { text: 'Mademoiselle Bobùn' },
+      action: {
+        buttons: [
+          { type: 'url', title: '🧭 Itinéraire', id: 'route', url: MAPS_URL },
+          { type: 'call', title: '📞 Appeler', id: 'call', phone_number: '33557955439' }
+        ]
+      }
     });
   } catch (e) {
-    console.error('itinéraire cta:', e.message);
-    await whapi('/messages/text', { to, body: body + '\n🧭 Itinéraire : ' + MAPS_URL }).catch(() => {});
+    console.error('itinéraire boutons:', e.message);
+    await whapi('/messages/text', { to, body: body + '\n🧭 Itinéraire : ' + MAPS_URL + '\n📞 05 57 95 54 39' }).catch(() => {});
   }
 }
 
