@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const express = require('express');
 const Stripe = require('stripe');
 const QRCode = require('qrcode');
+const { createClient } = require('@supabase/supabase-js');
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -35,6 +36,60 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
+
+// Supabase (optionnel) : durable + requêtable. Repli JSONL si non configuré.
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || '';
+const sb = (SUPABASE_URL && SUPABASE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
+  : null;
+
+function orderToRow(o) {
+  return {
+    session_id: o.sessionId, code: o.code, order_date: o.date,
+    items: o.items, amount: o.amount, note: o.note || '',
+    phone: o.phone || '', email: o.email || '',
+    status: o.status || 'payée', drive: o.drive || null
+  };
+}
+function rowToOrder(r) {
+  const o = {
+    id: (r.session_id || '').slice(-10), sessionId: r.session_id, code: r.code,
+    date: r.order_date, items: r.items || [], amount: r.amount,
+    note: r.note || '', phone: r.phone || '', email: r.email || '',
+    status: r.status || 'payée'
+  };
+  if (r.drive) o.drive = r.drive;
+  return o;
+}
+async function sbUpsert(o) {
+  if (!sb) return;
+  try {
+    const { error } = await sb.from('orders').upsert(orderToRow(o), { onConflict: 'session_id' });
+    if (error) throw error;
+  } catch (e) { console.error('supabase upsert:', e.message); }
+}
+async function sbUpdateDrive(sessionId, drive) {
+  if (!sb) return;
+  try {
+    const { error } = await sb.from('orders').update({ drive }).eq('session_id', sessionId);
+    if (error) throw error;
+  } catch (e) { console.error('supabase drive:', e.message); }
+}
+async function sbLoad() {
+  if (!sb) return;
+  try {
+    const { data, error } = await sb.from('orders').select('*').order('order_date', { ascending: true }).limit(3000);
+    if (error) throw error;
+    for (const r of (data || [])) {
+      const o = rowToOrder(r);
+      const i = orders.findIndex(x => x.sessionId === o.sessionId);
+      if (i >= 0) orders[i] = o; else orders.push(o);
+    }
+    orders.sort((a, b) => new Date(a.date) - new Date(b.date));
+    console.log(`supabase: ${(data || []).length} commandes chargées`);
+  } catch (e) { console.error('supabase load:', e.message); }
+}
 
 // Catalogue côté serveur : les prix font foi ici, pas côté client.
 const CATALOG = {
@@ -118,6 +173,7 @@ function appendLine(obj) {
 function saveOrder(order) {
   orders.push(order);
   appendLine(order);
+  sbUpsert(order);
   broadcast('order', order);
 }
 
@@ -278,6 +334,7 @@ app.get('/api/health', (req, res) => {
     webhook: !!WEBHOOK_SECRET,
     whapi: !!WHAPI_TOKEN,
     team: !!TEAM_WHATSAPP,
+    supabase: !!sb,
     orders: orders.length
   });
 });
@@ -357,8 +414,10 @@ function markDrive(order, vehicle) {
   const cleanVehicle = String(vehicle || '').slice(0, 120).trim() || 'véhicule non décrit';
   const evt = { _evt: 'drive', sessionId: order.sessionId, vehicle: cleanVehicle, date: new Date().toISOString() };
   const stored = orders.find(o => o.sessionId === order.sessionId);
-  if (stored) stored.drive = { vehicle: cleanVehicle, at: evt.date };
+  const drive = { vehicle: cleanVehicle, at: evt.date };
+  if (stored) stored.drive = drive;
   appendLine(evt);
+  sbUpdateDrive(order.sessionId, drive);
   broadcast('drive', { code: order.code, vehicle: cleanVehicle, sessionId: order.sessionId, at: evt.date });
 }
 
@@ -563,4 +622,5 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Mademoiselle Bobùn en ligne sur :${port} · commandes chargées : ${orders.length}`);
   configureWhapiWebhook();
+  sbLoad();
 });
