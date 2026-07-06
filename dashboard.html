@@ -67,6 +67,7 @@
     .code { font-family: var(--mono); font-weight: 500; color: var(--caramel); white-space: nowrap; }
     .items { font-weight: 300; line-height: 1.55; }
     .note { font-weight: 300; font-style: italic; color: rgba(244,237,224,.72); max-width: 260px; }
+    .note-vn { font-style: normal; font-size: .72rem; color: rgba(232,145,45,.7); margin-top: 2px; }
     .amount { font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .tel { font-family: var(--mono); font-size: .78rem; white-space: nowrap; }
     .when { font-family: var(--mono); font-size: .72rem; color: rgba(244,237,224,.6); white-space: nowrap; }
@@ -198,6 +199,7 @@
     .cat-row.sup { padding-left: 14px; }
     .cat-name { font-weight: 300; font-size: .92rem; flex: 1; }
     .cat-row.sup .cat-name { color: rgba(244,237,224,.65); font-size: .85rem; }
+    .cat-vn { display: block; font-size: .64rem; color: rgba(232,145,45,.72); margin-top: 1px; letter-spacing: .02em; }
     .cat-prix { font-family: var(--mono); font-size: .78rem; color: var(--caramel); white-space: nowrap; }
     .cat-qty { display: inline-flex; align-items: center; gap: 3px; border: 1px solid rgba(244,237,224,.22); border-radius: 999px; padding: 2px; }
     .cat-qty button {
@@ -411,7 +413,9 @@
           <td class="when">${when}</td>
           <td class="code">${o.code}</td>
           <td class="items">${items}</td>
-          <td class="note">${o.note ? o.note.replace(/</g, '&lt;') : '—'}</td>
+          <td class="note">${o.note
+            ? o.note.replace(/</g, '&lt;') + `<span class="vn note-vn" data-t="${encodeURIComponent(o.note)}"></span>`
+            : '—'}</td>
           <td class="tel">${o.phone || '—'}${o.email ? '<br>' + o.email.replace(/</g, '&lt;') : ''}</td>
           <td class="amount">${eur(o.amount)}</td>
           <td class="statut-cell">${o.status === 'sur place'
@@ -477,12 +481,30 @@
 
       let all = [];
 
+      // traduction auto des notes clients (fr → vi) pour la cuisine
+      const noteCache = new Map();
+      async function translateNotes() {
+        const els = document.querySelectorAll('.note-vn:not([data-done])');
+        for (const el of els) {
+          el.setAttribute('data-done', '1');
+          const text = decodeURIComponent(el.dataset.t || '');
+          if (!text) continue;
+          if (noteCache.has(text)) { el.textContent = noteCache.get(text); continue; }
+          try {
+            const r = await fetch('/api/translate?text=' + encodeURIComponent(text), { headers: { 'x-dash-key': KEY } });
+            const d = await r.json();
+            if (d.vi && d.vi.toLowerCase() !== text.toLowerCase()) { noteCache.set(text, d.vi); el.textContent = d.vi; }
+          } catch (e) { /* silencieux */ }
+        }
+      }
+
       function renderAll(list) {
         all = list;
         $('#rows').innerHTML = list.map(o => rowHtml(o, false)).join('');
         $('#empty').hidden = list.length > 0;
         list.forEach(o => known.add(o.sessionId));
         refreshStats(list);
+        translateNotes();
       }
 
       function addOrder(o) {
@@ -493,6 +515,7 @@
         $('#empty').hidden = true;
         refreshStats(all);
         scheduleStats();
+        translateNotes();
         // overlay vert clignotant
         $('#flash-code').textContent = o.code + ' · ' + eur(o.amount);
         const fl = $('#flash');
@@ -711,7 +734,7 @@
       function renderCatalog() {
         $('#cat-list').innerHTML = catalog.map(c => `
           <div class="cat-row ${c.sup ? 'sup' : ''}">
-            <span class="cat-name">${c.name}</span>
+            <span class="cat-name">${c.name}${(v => v ? `<span class="vn cat-vn">${v}</span>` : '')(vnItem(c.name))}</span>
             <span class="cat-prix">${eur(c.amount)}</span>
             <span class="cat-qty" data-id="${c.id}">
               <button type="button" data-d="-1" aria-label="Retirer">−</button>

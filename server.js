@@ -542,6 +542,27 @@ app.get('/api/orders', checkKey, (req, res) => {
   res.json({ orders: orders.slice(-500).reverse() });
 });
 
+/* traduction des notes clients (fr → vi) pour la cuisine — cache mémoire */
+const trCache = new Map();
+app.get('/api/translate', checkKey, async (req, res) => {
+  const text = String(req.query.text || '').slice(0, 400).trim();
+  const tl = /^[a-z]{2}$/.test(req.query.tl) ? req.query.tl : 'vi';
+  if (!text) return res.json({ vi: '' });
+  const key = tl + '|' + text;
+  if (trCache.has(key)) return res.json({ vi: trCache.get(key) });
+  try {
+    const u = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`;
+    const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
+    const data = await r.json();
+    const vi = (data[0] || []).map(seg => seg[0]).join('');
+    if (trCache.size > 2000) trCache.clear();
+    trCache.set(key, vi);
+    res.json({ vi });
+  } catch (e) {
+    res.json({ vi: '', error: true });
+  }
+});
+
 /* statistiques : historique par jour + KPIs (fuseau Europe/Paris) */
 const dayFmt = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' });
 const parisDay = iso => dayFmt.format(new Date(iso)); // 'YYYY-MM-DD'
