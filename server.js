@@ -301,25 +301,53 @@ async function sendCustomerWhatsApp(order) {
   await sendDriveProposal(order, to);
 }
 
-/* proposition Drive : bouton interactif WhatsApp, repli texte */
-async function sendDriveProposal(order, to) {
-  const body =
-    `🚗 *Option Drive* — on dépose votre commande à votre voiture !\n\n` +
-    `Garez-vous à proximité du 200 bis rue Malbec, puis touchez le bouton ` +
-    `ci-dessous (ou répondez « GARÉ » suivi de votre véhicule).\n\n` +
-    `🧭 Itinéraire : ${MAPS_URL}`;
+/* ---------- Flux Drive : itinéraire (bouton), véhicule, puis bouton « garé » ---------- */
+
+const DRIVE_TTL = 45 * 60 * 1000;
+const awaitingVehicle = new Map(); // téléphone -> { sessionId, until } : on attend la description du véhicule
+const awaitingPark = new Map();    // téléphone -> { sessionId, vehicle, until } : on attend le clic « garé »
+
+// itinéraire via un bouton CTA URL (repli texte)
+async function sendItinerary(to) {
+  const body = '🚗 *Option Drive* — on apporte votre commande directement à votre voiture !\n'
+    + 'Garez-vous à proximité du *200 bis rue Malbec, Bordeaux*.';
   try {
     await whapi('/messages/interactive', {
-      to,
-      type: 'button',
+      to, type: 'cta_url',
       body: { text: body },
-      action: {
-        buttons: [{ type: 'quick_reply', title: '🚗 Je suis garé devant', id: `drive_${order.sessionId}` }]
-      }
+      action: { name: 'cta_url', parameters: { display_text: '🧭 Voir l’itinéraire', url: MAPS_URL } }
     });
   } catch (e) {
-    console.error('drive interactif:', e.message);
-    await whapi('/messages/text', { to, body }).catch(err => console.error(err.message));
+    console.error('itinéraire cta:', e.message);
+    await whapi('/messages/text', { to, body: body + '\n🧭 Itinéraire : ' + MAPS_URL }).catch(() => {});
+  }
+}
+
+// proposition Drive : itinéraire + demande du véhicule (le bouton « garé » viendra APRÈS)
+async function sendDriveProposal(order, to) {
+  await sendItinerary(to);
+  awaitingVehicle.set(to, { sessionId: order.sessionId, until: Date.now() + DRIVE_TTL });
+  await whapi('/messages/text', {
+    to,
+    body: '🅿️ Pour le Drive, *répondez d’abord avec la description de votre véhicule* '
+      + '(couleur, modèle ou plaque).\nJe vous enverrai ensuite le bouton « Je suis garé devant ».'
+  }).catch(e => console.error(e.message));
+}
+
+// une fois le véhicule connu : on envoie le bouton « je suis garé »
+async function sendParkButton(order, to, vehicle) {
+  awaitingPark.set(to, { sessionId: order.sessionId, vehicle, until: Date.now() + DRIVE_TTL });
+  awaitingVehicle.delete(to);
+  const body = `Merci ! 🚙 *${vehicle}* bien noté.\nDès que vous êtes garé devant le restaurant, touchez le bouton ci-dessous.`;
+  try {
+    await whapi('/messages/interactive', {
+      to, type: 'button',
+      body: { text: body },
+      action: { buttons: [{ type: 'quick_reply', title: '✅ Je suis garé devant', id: `drive_${order.sessionId}` }] }
+    });
+  } catch (e) {
+    console.error('bouton garé:', e.message);
+    await whapi('/messages/text', { to, body: body + '\n(ou répondez « GARÉ » quand vous y êtes)' }).catch(() => {});
   }
 }
 
@@ -567,9 +595,7 @@ app.post('/api/drive', async (req, res) => {
   }
 });
 
-/* ---------- Webhook Whapi entrant : bouton « Je suis garé » + véhicule ---------- */
-
-const pendingVehicle = new Map(); // téléphone -> { sessionId, until }
+/* ---------- Webhook Whapi entrant : véhicule puis bouton « Je suis garé » ---------- */
 
 function findRecentOrderByPhone(digits) {
   const cutoff = Date.now() - 3 * 3600 * 1000;
@@ -605,23 +631,26 @@ async function handleWhapiBody(body) {
 
     const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
+    const now = Date.now();
 
-    // 1) signal « je suis garé » : bouton drive_ OU tout bouton/texte d'un client avec commande récente
+    // 1) CLIC « je suis garé » : on utilise le véhicule déjà renseigné
     const btnId = btn ? btn.id : '';
     const btnLabel = (btn ? btn.title : '').toLowerCase();
     const looksDrive = btnId.includes('drive_') || /gar[ée]|arriv|je suis l|devant/i.test(btnLabel);
-    if (looksDrive || (btn && findRecentOrderByPhone(from))) {
-      let order = null;
+    if (btn && (looksDrive || awaitingPark.has(from) || findRecentOrderByPhone(from))) {
       const mDrive = btnId.match(/drive_([A-Za-z0-9_]+)/);
-      if (mDrive) order = orders.find(o => o.sessionId === mDrive[1]);
-      if (!order) order = findRecentOrderByPhone(from);
+      let order = (mDrive && orders.find(o => o.sessionId === mDrive[1])) || findRecentOrderByPhone(from);
+      const parked = awaitingPark.get(from);
       if (order) {
-        markDrive(order, '');
-        pendingVehicle.set(from, { sessionId: order.sessionId, until: Date.now() + 30 * 60 * 1000 });
-        await whapi('/messages/text', {
-          to: from,
-          body: '🚗 Bien reçu ! Décrivez votre véhicule en réponse (couleur, modèle ou plaque) pour qu\'on vous trouve.'
-        }).catch(e => console.error(e.message));
+        const vehicle = (parked && parked.vehicle) || '';
+        markDrive(order, vehicle);                 // overlay bleu (avec le véhicule si connu)
+        awaitingPark.delete(from);
+        if (vehicle) {
+          await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande à la voiture !' }).catch(e => console.error(e.message));
+        } else {
+          awaitingVehicle.set(from, { sessionId: order.sessionId, until: now + DRIVE_TTL });
+          await whapi('/messages/text', { to: from, body: '🚗 Bien reçu ! Décrivez votre véhicule (couleur, modèle ou plaque) pour qu’on vous trouve.' }).catch(e => console.error(e.message));
+        }
       } else {
         console.log('whapi drive: aucune commande récente pour', from);
       }
@@ -630,16 +659,11 @@ async function handleWhapiBody(body) {
 
     if (!text) continue;
 
-    // 2) description du véhicule attendue après le bouton
-    const pending = pendingVehicle.get(from);
-    if (pending && pending.until > Date.now()) {
-      pendingVehicle.delete(from);
-      const order = orders.find(o => o.sessionId === pending.sessionId);
-      if (order) {
-        markDrive(order, text);
-        await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
-          .catch(e => console.error(e.message));
-      }
+    // 2) le client DONNE son véhicule (attendu) -> on envoie le bouton « je suis garé »
+    const av = awaitingVehicle.get(from);
+    if (av && av.until > now) {
+      const order = orders.find(o => o.sessionId === av.sessionId);
+      if (order) { await sendParkButton(order, from, text.slice(0, 120)); }
       continue;
     }
 
@@ -648,14 +672,28 @@ async function handleWhapiBody(body) {
     if (g) {
       const order = findRecentOrderByPhone(from);
       if (order) {
-        markDrive(order, g[1] || '');
-        await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
-          .catch(e => console.error(e.message));
+        const veh = (g[1] || '').trim() || (awaitingPark.get(from) || {}).vehicle || '';
+        markDrive(order, veh);
+        awaitingPark.delete(from);
+        await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande !' }).catch(e => console.error(e.message));
       } else {
-        await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' })
-          .catch(e => console.error(e.message));
+        await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' }).catch(e => console.error(e.message));
       }
+      continue;
     }
+
+    // 4) déjà garé et le client renvoie du texte -> mise à jour du véhicule
+    const ap = awaitingPark.get(from);
+    if (ap && ap.until > now) {
+      ap.vehicle = text.slice(0, 120);
+      const order = orders.find(o => o.sessionId === ap.sessionId);
+      if (order && order.drive) markDrive(order, ap.vehicle);
+      continue;
+    }
+
+    // 5) résilience (état perdu au redémarrage) : un texte d'un client avec commande récente non encore en drive = son véhicule
+    const recent = findRecentOrderByPhone(from);
+    if (recent && !recent.drive) { await sendParkButton(recent, from, text.slice(0, 120)); }
   }
 }
 
