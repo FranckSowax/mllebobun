@@ -4,8 +4,20 @@
    indicatifs : le serveur (server.js) fait foi au paiement.
    ============================================================ */
 
-(() => {
+(async () => {
   'use strict';
+
+  /* prix à jour depuis le menu Supabase (repli sur les prix par défaut) */
+  async function syncPrices(items, sups) {
+    try {
+      const r = await fetch('/api/menu/public', { signal: AbortSignal.timeout(3000) });
+      if (!r.ok) return;
+      const map = {};
+      (await r.json()).items.forEach(m => { map[m.id] = m; });
+      items.forEach(i => { if (map[i.id]) i.price = map[i.id].amount; });
+      sups.forEach(s => { if (map[s.id]) { s.price = map[s.id].amount; if (map[s.id].name) s.name = map[s.id].name; } });
+    } catch (e) { /* prix par défaut conservés */ }
+  }
 
   /* la page peut définir son propre catalogue via window.ORDER_ITEMS */
   const ITEMS = window.ORDER_ITEMS || [
@@ -35,6 +47,9 @@
     : location.pathname.includes('/loclac') ? '/loclac/'
     : location.pathname.includes('/film') ? '/film'
     : '/';
+
+  // synchronise les prix affichés avec le menu géré dans le dashboard
+  await syncPrices(ITEMS, SUPS);
 
   /* --- steppers dans chaque carte --- */
   ITEMS.forEach(item => {

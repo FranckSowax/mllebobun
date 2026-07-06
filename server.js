@@ -40,9 +40,22 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
 // Supabase (optionnel) : durable + requêtable. Repli JSONL si non configuré.
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || '';
-const sb = (SUPABASE_URL && SUPABASE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
-  : null;
+// Init défensive : une erreur Supabase ne doit jamais faire tomber le site
+// (repli transparent sur le volume). WebSocket fournie via 'ws' pour Node < 22.
+let sb = null;
+if (SUPABASE_URL && SUPABASE_KEY) {
+  try {
+    let WS;
+    try { WS = require('ws'); } catch (e) { WS = undefined; }
+    sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: WS ? { transport: WS } : undefined
+    });
+  } catch (e) {
+    console.error('supabase init (repli volume):', e.message);
+    sb = null;
+  }
+}
 
 function orderToRow(o) {
   return {

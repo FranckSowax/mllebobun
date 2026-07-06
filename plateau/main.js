@@ -82,7 +82,21 @@
 
   /* ================= DONNÉES + MODES ================= */
 
-  fetch('/assets/menu.json').then(r => r.json()).then(menu => {
+  // menu.json + prix à jour du dashboard (menu_items via /api/menu/public)
+  const VMAP = {
+    'bobun-boeuf': 'boeuf', 'bobun-poulet': 'poulet', 'bobun-crevette': 'crevette', 'bobun-veggie': 'veggie',
+    'loclac-boeuf': 'loclac_boeuf', 'loclac-poulet': 'loclac_poulet', 'loclac-veggie': 'loclac_veggie'
+  };
+  Promise.all([
+    fetch('/assets/menu.json').then(r => r.json()),
+    fetch('/api/menu/public').then(r => r.ok ? r.json() : { items: [] }).catch(() => ({ items: [] }))
+  ]).then(([menu, pub]) => {
+    const price = {};
+    (pub.items || []).forEach(m => { price[m.id] = m.amount; });
+    menu.items.forEach(it => {
+      const oid = VMAP[it.id];
+      if (oid && price[oid] != null) it.prix = (price[oid] / 100).toFixed(2).replace('.', ',');
+    });
     if (REDUCED) buildGrid(menu); else initWheel(menu);
   }).catch(() => buildGridFallback());
 
