@@ -665,16 +665,6 @@ async function replyDishFromPoll(to, dish) {
   }
 }
 
-// extrait les options votées, quel que soit le format Whapi du poll_update
-function extractPollVotes(m) {
-  const pu = m.poll_update || m.poll || (m.action && m.action.poll) || m.action || {};
-  const out = [];
-  const pull = o => { const t = o && (o.name || o.text || o.title); if (t) out.push(String(t)); };
-  [].concat(pu.votes || [], pu.selected_options || pu.selectedOptions || []).forEach(pull);
-  if (Array.isArray(pu.options)) pu.options.forEach(o => { if (o && (o.voted || o.selected || o.voters_count)) pull(o); });
-  return out;
-}
-
 /* ---------- Webhook Whapi entrant : véhicule puis bouton « Je suis garé » ---------- */
 
 function findRecentOrderByPhone(digits) {
@@ -703,23 +693,29 @@ function extractButton(m) {
 
 async function handleWhapiBody(body) {
   const messages = (body && body.messages) || (body && body.message ? [body.message] : []);
-  console.log('whapi in:', JSON.stringify(body).slice(0, 400));
+  console.log('whapi in:', JSON.stringify(body).slice(0, 1200));
   for (const m of messages) {
-    if (!m || m.from_me) continue;
-    const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
-    if (!from) continue;
+    if (!m) continue;
 
-    // 0) VOTE au sondage-carte -> on répond avec la photo + le lien de commande
-    if (m.type === 'poll_update' || m.poll_update || (m.action && (m.action.votes || m.action.type === 'vote'))) {
-      const votes = extractPollVotes(m);
+    // 0) VOTE au sondage-carte : arrive avec from_me:true, chat_id = le client,
+    //    l'option choisie = celle dont poll.results[].voters contient ce chat_id.
+    if (m.type === 'poll_update' && m.poll && Array.isArray(m.poll.results)) {
+      const voter = String(m.chat_id || '').replace(/\D/g, '');
+      if (!voter) continue;
       const dishes = menuDishes();
-      for (const t of votes) {
-        const norm = t.toLowerCase();
+      for (const r of m.poll.results) {
+        const picked = (r.voters || []).some(v => String(v).replace(/\D/g, '') === voter);
+        if (!picked) continue;
+        const norm = String(r.name || '').toLowerCase();
         const d = dishes.find(x => norm.includes(x.name.toLowerCase()));
-        if (d) await replyDishFromPoll(from, d);
+        if (d) await replyDishFromPoll(voter, d);
       }
       continue;
     }
+
+    if (m.from_me) continue;
+    const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
+    if (!from) continue;
 
     const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
