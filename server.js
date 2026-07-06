@@ -554,63 +554,97 @@ function findRecentOrderByPhone(digits) {
   return null;
 }
 
+// extrait l'identifiant/titre d'une réponse à un bouton, quel que soit le format Whapi
+function extractButton(m) {
+  const paths = [
+    m.reply && m.reply.buttons_reply, m.reply && m.reply.list_reply,
+    m.interactive && m.interactive.button_reply, m.interactive && m.interactive.list_reply,
+    m.button, m.action && m.action.button_reply, m.context && m.context.button
+  ];
+  for (const p of paths) {
+    if (p && (p.id || p.title)) return { id: String(p.id || ''), title: String(p.title || '') };
+  }
+  // certains canaux renvoient le bouton comme un simple texte "quoted"
+  if (m.type === 'button' && m.button && m.button.text) return { id: '', title: String(m.button.text) };
+  return null;
+}
+
+async function handleWhapiBody(body) {
+  const messages = (body && body.messages) || (body && body.message ? [body.message] : []);
+  console.log('whapi in:', JSON.stringify(body).slice(0, 400));
+  for (const m of messages) {
+    if (!m || m.from_me) continue;
+    const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
+    if (!from) continue;
+
+    const btn = extractButton(m);
+    const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
+
+    // 1) signal « je suis garé » : bouton drive_ OU tout bouton/texte d'un client avec commande récente
+    const btnId = btn ? btn.id : '';
+    const btnLabel = (btn ? btn.title : '').toLowerCase();
+    const looksDrive = btnId.includes('drive_') || /gar[ée]|arriv|je suis l|devant/i.test(btnLabel);
+    if (looksDrive || (btn && findRecentOrderByPhone(from))) {
+      let order = null;
+      const mDrive = btnId.match(/drive_([A-Za-z0-9_]+)/);
+      if (mDrive) order = orders.find(o => o.sessionId === mDrive[1]);
+      if (!order) order = findRecentOrderByPhone(from);
+      if (order) {
+        markDrive(order, '');
+        pendingVehicle.set(from, { sessionId: order.sessionId, until: Date.now() + 30 * 60 * 1000 });
+        await whapi('/messages/text', {
+          to: from,
+          body: '🚗 Bien reçu ! Décrivez votre véhicule en réponse (couleur, modèle ou plaque) pour qu\'on vous trouve.'
+        }).catch(e => console.error(e.message));
+      } else {
+        console.log('whapi drive: aucune commande récente pour', from);
+      }
+      continue;
+    }
+
+    if (!text) continue;
+
+    // 2) description du véhicule attendue après le bouton
+    const pending = pendingVehicle.get(from);
+    if (pending && pending.until > Date.now()) {
+      pendingVehicle.delete(from);
+      const order = orders.find(o => o.sessionId === pending.sessionId);
+      if (order) {
+        markDrive(order, text);
+        await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
+          .catch(e => console.error(e.message));
+      }
+      continue;
+    }
+
+    // 3) « GARÉ Clio grise AB-123-CD » en texte libre
+    const g = text.match(/^\s*gar[ée]?e?\b[\s:،-]*(.*)$/i);
+    if (g) {
+      const order = findRecentOrderByPhone(from);
+      if (order) {
+        markDrive(order, g[1] || '');
+        await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
+          .catch(e => console.error(e.message));
+      } else {
+        await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' })
+          .catch(e => console.error(e.message));
+      }
+    }
+  }
+}
+
+// jeton dans le CHEMIN (toujours conservé) ou en query (compat)
+app.post('/api/whapi/webhook/:t', async (req, res) => {
+  res.json({ ok: true });
+  if (WHAPI_HOOK_T && req.params.t !== WHAPI_HOOK_T) { console.log('whapi: jeton chemin invalide'); return; }
+  handleWhapiBody(req.body).catch(e => console.error('whapi webhook:', e.message));
+});
+
 app.post('/api/whapi/webhook', async (req, res) => {
   res.json({ ok: true }); // répondre vite, traiter ensuite
   try {
-    if (!WHAPI_HOOK_T || req.query.t !== WHAPI_HOOK_T) return;
-    const messages = (req.body && req.body.messages) || [];
-    for (const m of messages) {
-      if (!m || m.from_me) continue;
-      const from = String(m.from || m.chat_id || '').replace(/\D/g, '');
-      if (!from) continue;
-
-      // 1) bouton « Je suis garé devant »
-      const btnId = (m.reply && m.reply.buttons_reply && m.reply.buttons_reply.id)
-        || (m.interactive && m.interactive.button_reply && m.interactive.button_reply.id) || '';
-      if (btnId.startsWith('drive_')) {
-        const sid = btnId.slice(6).replace(/^ButtonsV3:/, '');
-        const order = orders.find(o => o.sessionId === sid) || findRecentOrderByPhone(from);
-        if (order) {
-          markDrive(order, '');
-          pendingVehicle.set(from, { sessionId: order.sessionId, until: Date.now() + 30 * 60 * 1000 });
-          await whapi('/messages/text', {
-            to: from,
-            body: '🚗 Bien reçu ! Décrivez votre véhicule en réponse (couleur, modèle ou plaque) pour qu\'on vous trouve.'
-          }).catch(e => console.error(e.message));
-        }
-        continue;
-      }
-
-      const text = (m.text && m.text.body ? String(m.text.body) : '').trim();
-      if (!text) continue;
-
-      // 2) description du véhicule attendue après le bouton
-      const pending = pendingVehicle.get(from);
-      if (pending && pending.until > Date.now()) {
-        pendingVehicle.delete(from);
-        const order = orders.find(o => o.sessionId === pending.sessionId);
-        if (order) {
-          markDrive(order, text);
-          await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
-            .catch(e => console.error(e.message));
-        }
-        continue;
-      }
-
-      // 3) « GARÉ Clio grise AB-123-CD » en texte libre
-      const g = text.match(/^\s*gar[ée]?e?\b[\s:،-]*(.*)$/i);
-      if (g) {
-        const order = findRecentOrderByPhone(from);
-        if (order) {
-          markDrive(order, g[1] || '');
-          await whapi('/messages/text', { to: from, body: '✅ C\'est noté — on vous apporte votre commande !' })
-            .catch(e => console.error(e.message));
-        } else {
-          await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' })
-            .catch(e => console.error(e.message));
-        }
-      }
-    }
+    if (WHAPI_HOOK_T && req.query.t !== WHAPI_HOOK_T) { console.log('whapi: jeton query invalide/absent'); return; }
+    await handleWhapiBody(req.body);
   } catch (e) {
     console.error('whapi webhook:', e.message);
   }
@@ -849,7 +883,7 @@ async function configureWhapiWebhook() {
       headers: { 'Authorization': `Bearer ${WHAPI_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         webhooks: [{
-          url: `${PUBLIC_URL}/api/whapi/webhook?t=${WHAPI_HOOK_T}`,
+          url: `${PUBLIC_URL}/api/whapi/webhook/${WHAPI_HOOK_T}`,
           events: [{ type: 'messages', method: 'post' }],
           mode: 'body'
         }]
