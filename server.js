@@ -79,15 +79,25 @@ async function sbUpdateDrive(sessionId, drive) {
 async function sbLoad() {
   if (!sb) return;
   try {
-    const { data, error } = await sb.from('orders').select('*').order('order_date', { ascending: true }).limit(3000);
+    const before = orders.map(o => o.sessionId);
+    const { data, error } = await sb.from('orders').select('*').order('order_date', { ascending: true }).limit(5000);
     if (error) throw error;
+    const known = new Set();
     for (const r of (data || [])) {
       const o = rowToOrder(r);
+      known.add(o.sessionId);
       const i = orders.findIndex(x => x.sessionId === o.sessionId);
       if (i >= 0) orders[i] = o; else orders.push(o);
     }
     orders.sort((a, b) => new Date(a.date) - new Date(b.date));
     console.log(`supabase: ${(data || []).length} commandes chargées`);
+    // back-fill : commandes présentes dans le volume mais pas encore dans Supabase
+    const missing = before.filter(sid => !known.has(sid));
+    if (missing.length) {
+      const rows = orders.filter(o => missing.includes(o.sessionId)).map(orderToRow);
+      const { error: e2 } = await sb.from('orders').upsert(rows, { onConflict: 'session_id' });
+      console.log(`supabase back-fill: ${e2 ? 'échec ' + e2.message : rows.length + ' commandes importées'}`);
+    }
   } catch (e) { console.error('supabase load:', e.message); }
 }
 
@@ -530,6 +540,50 @@ function checkKey(req, res, next) {
 
 app.get('/api/orders', checkKey, (req, res) => {
   res.json({ orders: orders.slice(-500).reverse() });
+});
+
+/* statistiques : historique par jour + KPIs (fuseau Europe/Paris) */
+const dayFmt = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' });
+const parisDay = iso => dayFmt.format(new Date(iso)); // 'YYYY-MM-DD'
+const isBowl = name => !/^suppl[ée]ment/i.test(name || '');
+const bowlsOf = o => o.items.reduce((s, i) => s + (isBowl(i.name) ? i.qty : 0), 0);
+
+app.get('/api/stats', checkKey, (req, res) => {
+  const today = parisDay(new Date().toISOString());
+  const days = {};       // 'YYYY-MM-DD' -> {orders, ca, bowls}
+  const dishes = {};     // name -> qty (plats uniquement)
+  let online = 0, surplace = 0, drive = 0;
+  const now = Date.now();
+  let ca7 = 0, ord7 = 0, ca30 = 0, ord30 = 0;
+
+  for (const o of orders) {
+    const d = parisDay(o.date);
+    const day = days[d] || (days[d] = { orders: 0, ca: 0, bowls: 0 });
+    day.orders++; day.ca += o.amount; day.bowls += bowlsOf(o);
+    if (o.status === 'sur place') surplace++; else online++;
+    if (o.drive) drive++;
+    o.items.forEach(i => { if (isBowl(i.name)) dishes[i.name] = (dishes[i.name] || 0) + i.qty; });
+    const age = now - new Date(o.date).getTime();
+    if (age <= 7 * 864e5) { ca7 += o.amount; ord7++; }
+    if (age <= 30 * 864e5) { ca30 += o.amount; ord30++; }
+  }
+
+  const td = days[today] || { orders: 0, ca: 0, bowls: 0 };
+  const byDay = Object.entries(days)
+    .map(([day, v]) => ({ day, ...v }))
+    .sort((a, b) => b.day.localeCompare(a.day))
+    .slice(0, 30);
+  const topDishes = Object.entries(dishes)
+    .map(([name, qty]) => ({ name, qty }))
+    .sort((a, b) => b.qty - a.qty).slice(0, 8);
+
+  res.json({
+    today: { orders: td.orders, ca: td.ca, bowls: td.bowls, avg: td.orders ? Math.round(td.ca / td.orders) : 0 },
+    week: { ca: ca7, orders: ord7 },
+    month: { ca: ca30, orders: ord30 },
+    totals: { orders: orders.length, online, surplace, drive },
+    byDay, topDishes, source: sb ? 'supabase' : 'volume'
+  });
 });
 
 /* catalogue pour la prise de commande sur place */

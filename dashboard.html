@@ -77,6 +77,45 @@
     }
     .empty { padding: 60px 20px; text-align: center; color: rgba(244,237,224,.45); font-weight: 300; }
 
+    /* ---- analytics : historique + top plats ---- */
+    .analytics {
+      display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 26px;
+    }
+    @media (max-width: 900px) { .analytics { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--noir2); border: 1px solid rgba(244,237,224,.1);
+      border-radius: 14px; padding: 18px 20px;
+    }
+    .panel-h { font-size: 1rem; font-weight: 900; margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px; }
+    .panel-h .vn { display: inline; font-size: .68rem; }
+    table.daily { width: 100%; border-collapse: collapse; min-width: 420px; }
+    table.daily th {
+      font-family: var(--mono); font-size: .55rem; letter-spacing: .12em; text-align: right;
+      color: var(--caramel); padding: 8px 10px; border-bottom: 1px solid rgba(244,237,224,.12);
+    }
+    table.daily th:first-child { text-align: left; }
+    table.daily td { padding: 9px 10px; font-size: .84rem; text-align: right; font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(244,237,224,.05); }
+    table.daily td:first-child { text-align: left; font-family: var(--mono); font-size: .76rem; color: rgba(244,237,224,.75); }
+    table.daily tr.today td { color: var(--vert); }
+    table.daily tr.today td:first-child::after { content: " • auj."; color: var(--vert); font-size: .62rem; }
+    .bar-col { width: 34%; }
+    td.bar-cell { padding-left: 10px; }
+    .ca-bar { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--caramel), #f5a848); min-width: 2px; }
+    .top-dishes { display: flex; flex-direction: column; gap: 9px; margin-bottom: 16px; }
+    .td-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    .td-name { font-size: .84rem; font-weight: 300; }
+    .td-name .vn { display: block; font-size: .62rem; color: rgba(232,145,45,.7); }
+    .td-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .td-bar { height: 7px; border-radius: 999px; background: var(--caramel); min-width: 3px; }
+    .td-qty { font-family: var(--mono); font-size: .78rem; color: var(--caramel); min-width: 26px; text-align: right; }
+    .split { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid rgba(244,237,224,.08); }
+    .split-chip {
+      font-family: var(--mono); font-size: .58rem; letter-spacing: .1em;
+      padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(244,237,224,.16);
+      color: rgba(244,237,224,.7);
+    }
+    .split-chip b { color: var(--ivoire); font-size: .9rem; margin-right: 4px; }
+
     /* ---- imprimante bluetooth ---- */
     .print-ctl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .bt-btn {
@@ -262,6 +301,27 @@
     <div class="stat"><b id="st-count">0</b><span>COMMANDES AUJOURD'HUI<em class="vn">ĐƠN HÔM NAY</em></span></div>
     <div class="stat"><b id="st-total">0 €</b><span>ENCAISSÉ AUJOURD'HUI<em class="vn">DOANH THU HÔM NAY</em></span></div>
     <div class="stat"><b id="st-bols">0</b><span>BOLS AUJOURD'HUI<em class="vn">SỐ TÔ HÔM NAY</em></span></div>
+    <div class="stat"><b id="st-avg">0 €</b><span>PANIER MOYEN<em class="vn">GIÁ TRỊ TRUNG BÌNH</em></span></div>
+    <div class="stat"><b id="st-week">0 €</b><span>CA 7 JOURS<em class="vn">DOANH THU 7 NGÀY</em></span></div>
+    <div class="stat"><b id="st-month">0 €</b><span>CA 30 JOURS<em class="vn">DOANH THU 30 NGÀY</em></span></div>
+  </div>
+
+  <!-- historique par jour + top plats -->
+  <div class="analytics" hidden>
+    <section class="panel">
+      <h2 class="panel-h">Historique par jour<span class="vn vn-h2">Lịch sử theo ngày</span></h2>
+      <div class="tablewrap">
+        <table class="daily">
+          <thead><tr><th>JOUR</th><th>CMD</th><th>CA</th><th>BOLS</th><th>PANIER MOY.</th><th class="bar-col">CA</th></tr></thead>
+          <tbody id="daily-rows"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h2 class="panel-h">Top plats<span class="vn vn-h2">Món bán chạy</span></h2>
+      <div id="top-dishes" class="top-dishes"></div>
+      <div class="split" id="split"></div>
+    </section>
   </div>
 
   <div class="tablewrap" hidden>
@@ -366,6 +426,51 @@
         $('#today-meta').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
       }
 
+      // ---- analytics : historique par jour + KPIs élargis + top plats ----
+      const dayLabel = ymd => {
+        const [y, m, d] = ymd.split('-');
+        return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      };
+      let statsTimer = null;
+      const scheduleStats = () => { clearTimeout(statsTimer); statsTimer = setTimeout(loadStats, 800); };
+
+      async function loadStats() {
+        try {
+          const r = await fetch('/api/stats', { headers: { 'x-dash-key': KEY } });
+          if (!r.ok) return;
+          const s = await r.json();
+          $('#st-avg').textContent = eur(s.today.avg);
+          $('#st-week').textContent = eur(s.week.ca);
+          $('#st-month').textContent = eur(s.month.ca);
+
+          const maxCa = Math.max(1, ...s.byDay.map(d => d.ca));
+          $('#daily-rows').innerHTML = s.byDay.map(d => `
+            <tr class="${d.day === s.byDay[0].day && isToday(new Date(d.day + 'T12:00').toISOString()) ? 'today' : ''}">
+              <td>${dayLabel(d.day)}</td>
+              <td>${d.orders}</td>
+              <td>${eur(d.ca)}</td>
+              <td>${d.bowls}</td>
+              <td>${eur(d.orders ? Math.round(d.ca / d.orders) : 0)}</td>
+              <td class="bar-cell"><div class="ca-bar" style="width:${Math.round(d.ca / maxCa * 100)}%"></div></td>
+            </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:rgba(244,237,224,.4)">—</td></tr>';
+
+          const maxQ = Math.max(1, ...s.topDishes.map(d => d.qty));
+          $('#top-dishes').innerHTML = s.topDishes.map(d => {
+            const vn = vnItem(d.name);
+            return `<div class="td-row">
+              <span class="td-name">${d.name}${vn ? `<span class="vn">${vn}</span>` : ''}</span>
+              <span class="td-bar-wrap"><span class="td-bar" style="width:${Math.round(d.qty / maxQ * 90) + 10}px"></span><span class="td-qty">${d.qty}</span></span>
+            </div>`;
+          }).join('') || '<p style="color:rgba(244,237,224,.4);font-size:.85rem">Aucun plat vendu.</p>';
+
+          $('#split').innerHTML =
+            `<span class="split-chip"><b>${s.totals.online}</b>EN LIGNE</span>` +
+            `<span class="split-chip"><b>${s.totals.surplace}</b>SUR PLACE</span>` +
+            `<span class="split-chip"><b>${s.totals.drive}</b>🚗 DRIVE</span>` +
+            `<span class="split-chip"><b>${s.totals.orders}</b>TOTAL</span>`;
+        } catch (e) { /* silencieux */ }
+      }
+
       let all = [];
 
       function renderAll(list) {
@@ -383,6 +488,7 @@
         $('#rows').insertAdjacentHTML('afterbegin', rowHtml(o, true));
         $('#empty').hidden = true;
         refreshStats(all);
+        scheduleStats();
         // overlay vert clignotant
         $('#flash-code').textContent = o.code + ' · ' + eur(o.amount);
         const fl = $('#flash');
@@ -666,10 +772,12 @@
           return;
         }
         $('#login').style.display = 'none';
-        document.querySelectorAll('header, .stats, .tablewrap').forEach(el => { el.hidden = false; });
+        document.querySelectorAll('header, .stats, .analytics, .tablewrap').forEach(el => { el.hidden = false; });
         $('#empty').hidden = all.length > 0;
         connectStream();
+        loadStats();
         setInterval(() => load().catch(() => {}), 60000); // filet de sécurité
+        setInterval(loadStats, 120000);
       }
 
       $('#enter').addEventListener('click', () => {
