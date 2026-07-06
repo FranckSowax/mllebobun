@@ -699,8 +699,14 @@ function conciergeTools() {
 
 function conciergeSystemPrompt() {
   const carte = menuDishes().map(d => `- ${d.id}: ${d.name} (${centsEur(d.amount)})${d.description ? ' — ' + d.description : ''}`).join('\n');
-  return `Tu es l'assistant WhatsApp chaleureux de Mademoiselle Bobùn, restaurant vietnamien (ghost kitchen) à Bordeaux. `
-    + `Réponds toujours en français, ton chaleureux et concis (1–2 phrases, quelques emojis).\n\n`
+  return `Tu es *Mademoiselle Bobùn* en personne sur WhatsApp : l'hôtesse d'un restaurant vietnamien (ghost kitchen) à Bordeaux qui adore ses plats et ses clients.\n\n`
+    + `TON — soigne-le, c'est l'image du resto :\n`
+    + `- Toujours en français, vouvoiement, chaleureux et accueillant, comme une restauratrice passionnée.\n`
+    + `- Court et naturel (1–2 phrases), jamais robotique. Bannis « je suis un assistant », « comment puis-je vous aider », « n'hésitez pas ».\n`
+    + `- Un emoji bien placé maximum ; gourmand quand tu parles d'un plat (🍜🔥🌿🥢).\n`
+    + `- Donne envie sans en faire trop : évoque les saveurs (citronnelle, croustillant des nems, fraîcheur des crudités) en une touche.\n`
+    + `- Tutoie la culture vietnamienne avec fierté, mais reste simple et direct.\n`
+    + `- Exemples de ton : « Excellent choix 🍜 » · « On vous attend ce soir 🌙 » · « Ça, c'est notre best-seller ! ».\n\n`
     + `INFOS PRATIQUES (utilise-les pour répondre DIRECTEMENT, ne les invente jamais) :\n`
     + `- Horaires : du lundi au vendredi 11h45–15h et 18h30–22h ; samedi et dimanche 18h–22h30.\n`
     + `- Adresse : 200 bis rue Malbec, 33000 Bordeaux (retrait sur place / Click & Collect).\n`
@@ -745,10 +751,10 @@ async function conciergeReply(from, text) {
     const d = byId[args.dish_id];
     await sendOrderButton(from, SITE() + (d ? dishPage(d.cat) : '/bobunbeef/'), d && d.id);
   } else if (name === 'parler_a_humain') {
-    await whapi('/messages/text', { to: from, body: 'Je transmets à l’équipe, on vous répond très vite 🙏 (ou appelez le 05 57 95 54 39).' }).catch(() => {});
-    if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `💬 Client ${from} à traiter : « ${text.slice(0, 300)} »${args.resume ? '\n(' + args.resume + ')' : ''}` }).catch(() => {});
+    await whapi('/messages/text', { to: from, body: 'Je transmets tout de suite à l’équipe, on revient vers vous très vite 🙏\nBesoin urgent ? Appelez-nous au 05 57 95 54 39.' }).catch(() => {});
+    if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🔔 *Message client à traiter*\n_Tin nhắn khách cần xử lý_\n\n👤 +${from}\n« ${text.slice(0, 300)} »${args.resume ? '\n📝 ' + args.resume : ''}` }).catch(() => {});
   } else if (name === 'repondre') {
-    await whapi('/messages/text', { to: from, body: (args.message || 'Bonjour ! Comment puis-je vous aider ? 😊').slice(0, 600) }).catch(() => {});
+    await whapi('/messages/text', { to: from, body: (args.message || 'Coucou 👋 Une petite faim ? Dites-moi ce qui vous ferait plaisir 🍜').slice(0, 600) }).catch(() => {});
   } else { // montrer_carte + repli
     await sendCarte(from);
   }
