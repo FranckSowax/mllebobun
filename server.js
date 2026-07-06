@@ -300,7 +300,7 @@ async function sendCustomerWhatsApp(order) {
     console.error(e.message);
     await whapi('/messages/text', { to, body: caption }).catch(err => console.error(err.message));
   }
-  await sendDriveProposal(order, to);
+  // Drive : géré uniquement sur la page de retrait (merci.html). Rien sur WhatsApp.
 }
 
 /* ---------- Flux Drive : itinéraire (bouton), véhicule, puis bouton « garé » ---------- */
@@ -759,79 +759,14 @@ async function handleWhapiBody(body) {
   const messages = (body && body.messages) || (body && body.message ? [body.message] : []);
   console.log('whapi in:', JSON.stringify(body).slice(0, 1200));
   for (const m of messages) {
-    if (!m) continue;
-
-    if (m.from_me) continue;
+    if (!m || m.from_me) continue;
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
-    const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
-    const now = Date.now();
-
-    // 1) CLIC « je suis garé » : on utilise le véhicule déjà renseigné
-    const btnId = btn ? btn.id : '';
-    const btnLabel = (btn ? btn.title : '').toLowerCase();
-    const looksDrive = btnId.includes('drive_') || /gar[ée]|arriv|je suis l|devant/i.test(btnLabel);
-    if (btn && (looksDrive || awaitingPark.has(from) || findRecentOrderByPhone(from))) {
-      const mDrive = btnId.match(/drive_([A-Za-z0-9_]+)/);
-      let order = (mDrive && orders.find(o => o.sessionId === mDrive[1])) || findRecentOrderByPhone(from);
-      const parked = awaitingPark.get(from);
-      if (order) {
-        const vehicle = (parked && parked.vehicle) || '';
-        markDrive(order, vehicle);                 // overlay bleu (avec le véhicule si connu)
-        awaitingPark.delete(from);
-        if (vehicle) {
-          await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande à la voiture !' }).catch(e => console.error(e.message));
-        } else {
-          awaitingVehicle.set(from, { sessionId: order.sessionId, until: now + DRIVE_TTL });
-          await whapi('/messages/text', { to: from, body: '🚗 Bien reçu ! Décrivez votre véhicule (couleur, modèle ou plaque) pour qu’on vous trouve.' }).catch(e => console.error(e.message));
-        }
-      } else {
-        console.log('whapi drive: aucune commande récente pour', from);
-      }
-      continue;
-    }
-
     if (!text) continue;
 
-    // 2) le client DONNE son véhicule (attendu) -> on envoie le bouton « je suis garé »
-    const av = awaitingVehicle.get(from);
-    if (av && av.until > now) {
-      const order = orders.find(o => o.sessionId === av.sessionId);
-      if (order) { await sendParkButton(order, from, text.slice(0, 120)); }
-      continue;
-    }
-
-    // 3) « GARÉ Clio grise AB-123-CD » en texte libre
-    const g = text.match(/^\s*gar[ée]?e?\b[\s:،-]*(.*)$/i);
-    if (g) {
-      const order = findRecentOrderByPhone(from);
-      if (order) {
-        const veh = (g[1] || '').trim() || (awaitingPark.get(from) || {}).vehicle || '';
-        markDrive(order, veh);
-        awaitingPark.delete(from);
-        await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande !' }).catch(e => console.error(e.message));
-      } else {
-        await whapi('/messages/text', { to: from, body: 'Nous ne retrouvons pas de commande récente pour ce numéro — appelez le 05 57 95 54 39.' }).catch(e => console.error(e.message));
-      }
-      continue;
-    }
-
-    // 4) déjà garé et le client renvoie du texte -> mise à jour du véhicule
-    const ap = awaitingPark.get(from);
-    if (ap && ap.until > now) {
-      ap.vehicle = text.slice(0, 120);
-      const order = orders.find(o => o.sessionId === ap.sessionId);
-      if (order && order.drive) markDrive(order, ap.vehicle);
-      continue;
-    }
-
-    // 5) résilience (état perdu au redémarrage) : un texte d'un client avec commande récente non encore en drive = son véhicule
-    const recent = findRecentOrderByPhone(from);
-    if (recent && !recent.drive) { await sendParkButton(recent, from, text.slice(0, 120)); continue; }
-
-    // 6) sinon -> Concierge IA : comprend la demande et répond (photo/prix/lien/carte)
+    // Tout message texte -> Concierge IA (le Drive est géré sur la page de retrait, pas sur WhatsApp)
     await conciergeReply(from, text).catch(e => console.error('concierge:', e.message));
   }
 }
