@@ -547,6 +547,19 @@ app.post('/api/demo', checkKey, async (req, res) => {
   }
 });
 
+/* envoi du menu-sondage (poll) à un numéro */
+app.post('/api/menu-poll', checkKey, async (req, res) => {
+  try {
+    const to = frPhoneToWa((req.body || {}).wa);
+    if (to.length < 10 || to.length > 15) return res.status(400).json({ error: 'Numéro WhatsApp requis.' });
+    const r = await sendMenuPoll(to + '@s.whatsapp.net');
+    res.json({ ok: !!(r && r.sent), id: r && r.message && r.message.id, options: menuDishes().length });
+  } catch (e) {
+    console.error('menu-poll:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* Code de retrait affiché sur merci.html */
 app.get('/api/session/:id', async (req, res) => {
   const id = req.params.id;
@@ -602,6 +615,66 @@ app.post('/api/drive', async (req, res) => {
   }
 });
 
+/* ---------- Menu via sondage (poll) : la carte + réponse auto au vote ---------- */
+
+const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
+const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
+function dishEmoji(id) {
+  if (/crevette/.test(id)) return '🦐';
+  if (/poulet/.test(id)) return '🍗';
+  if (/veggie/.test(id)) return '🌱';
+  return '🥩';
+}
+function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : '/bobunbeef/'; }
+function dishJpg(item) {
+  const m = String(item.image || '').match(/\/assets\/plats\/([a-z0-9-]+)\.webp$/i);
+  return m ? `/assets/plats/${m[1]}.jpg` : '';
+}
+function menuDishes() {
+  return Object.values(effectiveCatalog())
+    .filter(c => !c.sup && c.active !== false)
+    .sort((a, b) => (a.sort || 0) - (b.sort || 0));
+}
+
+const recentPollReply = new Map(); // "from|dishId" -> ts (anti double-réponse)
+
+async function sendMenuPoll(to) {
+  const dishes = menuDishes();
+  const options = dishes.map(d => `${dishEmoji(d.id)} ${d.name} — ${centsEur(d.amount)}`.slice(0, 100));
+  return whapi('/messages/poll', {
+    to,
+    title: '📋 Notre carte — quel plat vous tente ? Votez, on vous envoie le lien pour commander 👇',
+    options,
+    count: 1
+  });
+}
+
+async function replyDishFromPoll(to, dish) {
+  const key = to + '|' + dish.id;
+  const now = Date.now();
+  if (recentPollReply.get(key) > now - 30000) return;
+  recentPollReply.set(key, now);
+  const url = SITE() + dishPage(dish.cat);
+  const caption = `${dishEmoji(dish.id)} *${dish.name}* — ${centsEur(dish.amount)}\n`
+    + `${dish.description || ''}\n\n👉 Commander : ${url}`;
+  const jpg = dishJpg(dish);
+  if (jpg) {
+    await whapi('/messages/image', { to, media: SITE() + jpg, caption }).catch(e => console.error('poll reply img:', e.message));
+  } else {
+    await whapi('/messages/text', { to, body: caption }).catch(() => {});
+  }
+}
+
+// extrait les options votées, quel que soit le format Whapi du poll_update
+function extractPollVotes(m) {
+  const pu = m.poll_update || m.poll || (m.action && m.action.poll) || m.action || {};
+  const out = [];
+  const pull = o => { const t = o && (o.name || o.text || o.title); if (t) out.push(String(t)); };
+  [].concat(pu.votes || [], pu.selected_options || pu.selectedOptions || []).forEach(pull);
+  if (Array.isArray(pu.options)) pu.options.forEach(o => { if (o && (o.voted || o.selected || o.voters_count)) pull(o); });
+  return out;
+}
+
 /* ---------- Webhook Whapi entrant : véhicule puis bouton « Je suis garé » ---------- */
 
 function findRecentOrderByPhone(digits) {
@@ -635,6 +708,18 @@ async function handleWhapiBody(body) {
     if (!m || m.from_me) continue;
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
+
+    // 0) VOTE au sondage-carte -> on répond avec la photo + le lien de commande
+    if (m.type === 'poll_update' || m.poll_update || (m.action && (m.action.votes || m.action.type === 'vote'))) {
+      const votes = extractPollVotes(m);
+      const dishes = menuDishes();
+      for (const t of votes) {
+        const norm = t.toLowerCase();
+        const d = dishes.find(x => norm.includes(x.name.toLowerCase()));
+        if (d) await replyDishFromPoll(from, d);
+      }
+      continue;
+    }
 
     const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
