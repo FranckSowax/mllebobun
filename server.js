@@ -832,6 +832,31 @@ app.get('/api/orders', checkKey, (req, res) => {
   res.json({ orders: orders.slice(-500).reverse() });
 });
 
+/* purge des commandes démo (mémoire + fichier + Supabase) */
+app.post('/api/orders/purge-demo', checkKey, async (req, res) => {
+  try {
+    const before = orders.length;
+    orders = orders.filter(o => o.status !== 'démo');
+    const removed = before - orders.length;
+    // réécrit le fichier JSONL sans les démos
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(ORDERS_FILE, orders.map(o => JSON.stringify(o)).join('\n') + (orders.length ? '\n' : ''));
+    } catch (e) { console.error('purge fichier:', e.message); }
+    // supprime dans Supabase
+    if (sb) {
+      const { error } = await sb.from('orders').delete().eq('status', 'démo');
+      if (error) console.error('purge supabase:', error.message);
+    }
+    broadcast('purge', { status: 'démo', removed });
+    console.log('purge démo:', removed, 'commande(s) supprimée(s)');
+    res.json({ ok: true, removed });
+  } catch (e) {
+    console.error('purge-demo:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* traduction des notes clients (fr → vi) pour la cuisine — cache mémoire */
 const trCache = new Map();
 app.get('/api/translate', checkKey, async (req, res) => {

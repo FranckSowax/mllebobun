@@ -358,6 +358,7 @@
     <div class="print-ctl">
       <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE<span class="vn vn-btn">GỌI MÓN TẠI CHỖ</span></button>
       <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
+      <button id="purge-demo" class="bt-btn" title="Supprimer toutes les commandes démo">🧹 PURGER DÉMOS</button>
       <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
       <button id="chatbot-toggle" class="bt-btn chatbot-btn" title="Activer / désactiver le concierge WhatsApp">🤖 CHATBOT<span class="vn vn-btn">Trợ lý</span></button>
       <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
@@ -875,6 +876,7 @@
         es.onerror = () => $('#live-dot').classList.remove('live');
         es.addEventListener('order', e => { try { addOrder(JSON.parse(e.data)); } catch (err) { /* ignore */ } });
         es.addEventListener('drive', e => { try { onDrive(JSON.parse(e.data)); } catch (err) { /* ignore */ } });
+        es.addEventListener('purge', () => { load().catch(() => {}); loadStats(); });
       }
 
       /* ---- commande sur place ---- */
@@ -984,6 +986,22 @@
           renderChatbot(!!(await r.json()).chatbot);
         } catch (e) {}
       }
+      $('#purge-demo').addEventListener('click', async () => {
+        if (!confirm('Supprimer toutes les commandes démo ? Cette action est définitive.')) return;
+        const b = $('#purge-demo');
+        b.disabled = true;
+        try {
+          const r = await fetch('/api/orders/purge-demo', { method: 'POST', headers: { 'x-dash-key': KEY } });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'échec');
+          await load();
+          loadStats();
+          b.textContent = `✓ ${d.removed} SUPPRIMÉE(S)`;
+          setTimeout(() => { b.innerHTML = '🧹 PURGER DÉMOS'; }, 2500);
+        } catch (e) { alert('Purge impossible : ' + e.message); }
+        b.disabled = false;
+      });
+
       $('#chatbot-toggle').addEventListener('click', async () => {
         const next = !$('#chatbot-toggle').classList.contains('on');
         const b = $('#chatbot-toggle');
