@@ -638,8 +638,9 @@
         fl.classList.remove('on');
         void fl.offsetWidth;
         fl.classList.add('on');
+        startAlert();
         clearTimeout(fl._t);
-        fl._t = setTimeout(() => fl.classList.remove('on'), 10000);
+        fl._t = setTimeout(() => { fl.classList.remove('on'); stopAlert(); }, 10000);
         // impression automatique du ticket (si imprimante connectée)
         if ($('#autoprint').checked && btChar && !printed.has(o.sessionId)) {
           printed.add(o.sessionId);
@@ -647,7 +648,51 @@
         }
       }
 
-      $('#flash').addEventListener('click', () => $('#flash').classList.remove('on'));
+      $('#flash').addEventListener('click', () => { $('#flash').classList.remove('on'); stopAlert(); });
+
+      /* ============================================================
+         ALERTE SONORE douce (Web Audio, sans fichier externe)
+         Détectable mais pas agressive · s'arrête au clic ou ~10 s
+         ============================================================ */
+      let audioCtx = null;
+      function ensureAudio() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) {}
+        return audioCtx;
+      }
+      // débloque l'audio dès le premier geste (politique autoplay des navigateurs)
+      document.addEventListener('click', ensureAudio);
+
+      function chime(ctx, t0) {
+        // deux notes rondes façon clochette, enveloppe tout en douceur
+        [[880, 0], [1174.66, 0.15]].forEach(([freq, dt]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = freq;
+          const t = t0 + dt;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.16, t + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+          o.connect(g).connect(ctx.destination);
+          o.start(t); o.stop(t + 0.95);
+        });
+      }
+
+      let alertTimer = null;
+      function startAlert() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        stopAlert();
+        let n = 0;
+        (function ring() {
+          if (n >= 5) { stopAlert(); return; }   // ~5 rappels sur ~10 s puis silence
+          chime(ctx, ctx.currentTime);
+          n++;
+          alertTimer = setTimeout(ring, 2000);
+        })();
+      }
+      function stopAlert() { if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; } }
 
       /* ============================================================
          IMPRIMANTE BLUETOOTH (ESC/POS via Web Bluetooth — Chrome)
@@ -815,11 +860,12 @@
         fd.classList.remove('on');
         void fd.offsetWidth;
         fd.classList.add('on');
+        startAlert();
         clearTimeout(fd._t);
-        fd._t = setTimeout(() => fd.classList.remove('on'), 15000);
+        fd._t = setTimeout(() => { fd.classList.remove('on'); stopAlert(); }, 15000);
       }
 
-      $('#flash-drive').addEventListener('click', () => $('#flash-drive').classList.remove('on'));
+      $('#flash-drive').addEventListener('click', () => { $('#flash-drive').classList.remove('on'); stopAlert(); });
 
       let es = null;
       function connectStream() {
