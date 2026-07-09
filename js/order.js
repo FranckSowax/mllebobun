@@ -129,6 +129,7 @@
       .reduce((s, sid) => s + (supById[sid] ? supById[sid].price : 0), 0);
   }
   function supShort(name) { return name.replace(/^Supplément\s+/i, ''); }
+  const SUP_ICON = { sup_nems: '🥟', sup_poulet: '🍗', sup_boeuf: '🥩', sup_tofu: '🌱', sup_oeuf: '🍳' };
 
   function render() {
     // compteurs sur les cartes de plats
@@ -141,16 +142,25 @@
     });
     // lignes du panier
     linesEl.innerHTML = lines.map(l => {
-      const chips = SUPS.map(s =>
-        `<button type="button" class="sup-chip ${l.sups[s.id] ? 'on' : ''}" data-uid="${l.uid}" data-sup="${s.id}">
-          ${supShort(s.name)} <em>+${eur(s.price)}</em></button>`).join('');
+      const chips = SUPS.map(s => {
+        const on = !!l.sups[s.id];
+        return `<button type="button" class="sup-chip${on ? ' on' : ''}" data-uid="${l.uid}" data-sup="${s.id}" aria-pressed="${on}">
+          <span class="sup-ic">${SUP_ICON[s.id] || '➕'}</span>
+          <span class="sup-nm">${supShort(s.name)}</span>
+          <span class="sup-pr">+${eur(s.price)}</span>
+          <span class="sup-tick" aria-hidden="true"></span>
+        </button>`;
+      }).join('');
       return `<div class="cart-line" data-uid="${l.uid}">
         <div class="cart-line-head">
           <span class="cart-line-name">${bowlName(l.dishId)}</span>
           <span class="cart-line-price">${eur(lineSubtotal(l))}</span>
-          <button type="button" class="cart-line-del" data-uid="${l.uid}" aria-label="Retirer ce bol">✕</button>
+          <button type="button" class="cart-line-del" data-uid="${l.uid}" aria-label="Retirer ce plat">✕</button>
         </div>
-        <div class="cart-line-sups"><span class="cart-sup-label">SUPPLÉMENTS</span>${chips}</div>
+        <div class="cart-line-sups">
+          <span class="cart-sup-label">Un petit plus&nbsp;?</span>
+          <div class="sup-chips">${chips}</div>
+        </div>
       </div>`;
     }).join('');
     totalEl.textContent = eur(lines.reduce((s, l) => s + lineSubtotal(l), 0));
