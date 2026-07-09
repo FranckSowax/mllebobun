@@ -56,6 +56,8 @@
       <h1>Nouvelle démo</h1>
       <label for="dish">PLAT (facultatif)</label>
       <select id="dish"><option value="">Commande démo générique</option></select>
+      <label for="mode">MODE DE RETRAIT</label>
+      <select id="mode"><option value="emporter">🥡 À emporter</option><option value="drive">🚗 Drive (test flux véhicule WhatsApp)</option></select>
       <label for="wa">NUMÉRO WHATSAPP (pour recevoir le code + QR + Drive)</label>
       <input id="wa" class="mono" type="tel" inputmode="tel" placeholder="06 12 34 56 78" required>
       <label for="note">NOTE (facultatif)</label>
@@ -100,7 +102,7 @@
         try {
           const r = await fetch('/api/demo', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dash-key': KEY },
-            body: JSON.stringify({ wa, note: $('#note').value, item: $('#dish').value || undefined })
+            body: JSON.stringify({ wa, note: $('#note').value, item: $('#dish').value || undefined, mode: $('#mode').value })
           });
           const d = await r.json();
           if (!r.ok || !d.ok) throw new Error(d.error || 'échec');
