@@ -138,6 +138,28 @@
       cursor: pointer; user-select: none;
     }
     .autop input { accent-color: var(--caramel); }
+
+    /* dropdown OUTILS techniques */
+    .tools-drop { position: relative; }
+    #tools-toggle .caret { transition: transform .2s; }
+    .tools-drop.open #tools-toggle { border-color: var(--caramel); color: var(--caramel); }
+    .tools-drop.open #tools-toggle .caret { transform: rotate(180deg); }
+    .tools-menu {
+      position: absolute; top: calc(100% + 8px); left: 0;
+      min-width: 250px;
+      background: rgba(11,8,5,.97);
+      border: 1px solid rgba(244,237,224,.16);
+      border-radius: 14px;
+      padding: 8px;
+      display: flex; flex-direction: column; gap: 6px;
+      box-shadow: 0 22px 55px rgba(0,0,0,.6);
+      opacity: 0; visibility: hidden; transform: translateY(-6px);
+      transition: opacity .18s, transform .18s, visibility .18s;
+      z-index: 60;
+    }
+    .tools-drop.open .tools-menu { opacity: 1; visibility: visible; transform: none; }
+    .tools-menu .bt-btn { width: 100%; text-align: left; }
+    .tools-menu .autop { padding: 10px 16px; }
     .print-btn {
       background: transparent; border: 1px solid rgba(244,237,224,.22);
       border-radius: 9px; font-size: .95rem; padding: 6px 10px; cursor: pointer;
@@ -358,11 +380,16 @@
     <h1>Commandes <span class="dot" id="live-dot" title="connexion temps réel"></span><span class="vn vn-h1">Đơn hàng</span></h1>
     <div class="print-ctl">
       <button id="new-order" class="bt-btn new-order">➕ COMMANDE SUR PLACE<span class="vn vn-btn">GỌI MÓN TẠI CHỖ</span></button>
-      <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
-      <button id="purge-demo" class="bt-btn" title="Supprimer toutes les commandes démo">🧹 PURGER DÉMOS</button>
-      <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
-      <button id="chatbot-toggle" class="bt-btn chatbot-btn" title="Activer / désactiver le concierge WhatsApp">🤖 CHATBOT<span class="vn vn-btn">Trợ lý</span></button>
-      <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
+      <div class="tools-drop">
+        <button type="button" id="tools-toggle" class="bt-btn" aria-haspopup="true" aria-expanded="false" title="Outils techniques">⚙️ OUTILS <span class="caret">▾</span></button>
+        <div class="tools-menu" role="menu">
+          <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
+          <button id="purge-demo" class="bt-btn" title="Supprimer toutes les commandes démo">🧹 PURGER DÉMOS</button>
+          <button id="bt-connect" class="bt-btn" title="Appairer l'imprimante Bluetooth (Chrome/Android)">🖨 CONNECTER L'IMPRIMANTE</button>
+          <button id="chatbot-toggle" class="bt-btn chatbot-btn" title="Activer / désactiver le concierge WhatsApp">🤖 CHATBOT<span class="vn vn-btn">Trợ lý</span></button>
+          <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
+        </div>
+      </div>
       <p class="meta" id="today-meta">—</p>
     </div>
   </header>
@@ -1016,6 +1043,21 @@
           renderChatbot(!!(await r.json()).chatbot);
         } catch (e) {}
         b.disabled = false;
+      });
+
+      /* dropdown OUTILS techniques : ouvre/ferme, se referme au clic extérieur */
+      document.addEventListener('click', e => {
+        const drop = $('.tools-drop');
+        if (!drop) return;
+        const onToggle = e.target.closest('#tools-toggle');
+        const inMenu = e.target.closest('.tools-menu');
+        if (onToggle) {
+          const open = drop.classList.toggle('open');
+          $('#tools-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+        } else if (!inMenu) {
+          drop.classList.remove('open');
+          $('#tools-toggle').setAttribute('aria-expanded', 'false');
+        }
       });
 
       /* ============ VUE MENU & PRIX ============ */
