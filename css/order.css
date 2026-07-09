@@ -67,6 +67,31 @@
   text-align: left;
 }
 
+.order-mode {
+  display: flex;
+  gap: 8px;
+  background: rgba(244, 237, 224, .05);
+  border: 1px solid rgba(244, 237, 224, .14);
+  border-radius: 999px;
+  padding: 5px;
+}
+
+.mode-opt {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: rgba(244, 237, 224, .7);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: .9rem;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+
+.mode-opt.on { background: var(--caramel); color: var(--noir); }
+
 .order-pickup-note {
   font-weight: 300;
   font-size: .92rem;

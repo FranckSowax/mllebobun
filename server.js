@@ -171,7 +171,7 @@ const CATALOG = {
   sup_oeuf: { name: 'Supplément œuf au plat', amount: 100, sup: true }
 };
 
-const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/'];
+const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/', '/padthai/'];
 
 // Menu piloté par Supabase (prix, descriptions, images). Repli sur CATALOG codé en dur.
 let MENU = {};   // id -> { id, cat, name, name_vn, description, amount, image, sup, active }

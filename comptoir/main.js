@@ -92,12 +92,30 @@
     const fin = $('#fin');
     const catLabel = id => (menu.categories.find(c => c.id === id) || {}).label || '';
 
-    // COMMANDER : les bobun et loc lac renvoient vers nos pages de
-    // commande (films + panier Stripe), le reste vers la fiche produit
-    const ctaUrl = item =>
-      item.cat === 'bobun' ? '/bobunbeef/'
-      : item.cat === 'loclac' ? '/loclac/'
-      : item.url;
+    // COMMANDER : bobun & loc lac -> nos pages (film + panier Stripe).
+    // Autres plats -> menu déroulant : À emporter / Drive (si panier) + Uber Eats + Deliveroo.
+    const UBER = 'https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw';
+    const DELIVEROO = 'https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun';
+    const CARTPAGE = { padthai: '/padthai/' };
+
+    const ctaHtml = item => {
+      if (item.cat === 'bobun') return `<a class="plat-cta" href="/bobunbeef/" aria-label="Commander ${item.nom}">COMMANDER</a>`;
+      if (item.cat === 'loclac') return `<a class="plat-cta" href="/loclac/" aria-label="Commander ${item.nom}">COMMANDER</a>`;
+      const cart = CARTPAGE[item.cat];
+      const opts = [];
+      if (cart) {
+        opts.push(`<a role="menuitem" href="${cart}"><span class="mi-ic">🥡</span> À emporter</a>`);
+        opts.push(`<a role="menuitem" href="${cart}?mode=drive"><span class="mi-ic">🚗</span> Drive</a>`);
+      } else if (item.url) {
+        opts.push(`<a role="menuitem" href="${item.url}" target="_blank" rel="noopener"><span class="mi-ic">🥡</span> À emporter</a>`);
+      }
+      opts.push(`<a role="menuitem" class="mi-uber" href="${UBER}" target="_blank" rel="noopener"><span class="mi-logo"></span> Uber Eats</a>`);
+      opts.push(`<a role="menuitem" class="mi-deliveroo" href="${DELIVEROO}" target="_blank" rel="noopener"><span class="mi-logo"></span> Deliveroo</a>`);
+      return `<div class="cta-drop">
+          <button type="button" class="plat-cta cta-toggle" aria-haspopup="true" aria-expanded="false">COMMANDER <span class="caret">▾</span></button>
+          <div class="cta-menu" role="menu">${opts.join('')}</div>
+        </div>`;
+    };
 
     menu.items.forEach((item, idx) => {
       const sec = document.createElement('section');
@@ -107,8 +125,6 @@
       const media = VIDEO[item.id] && !REDUCED
         ? `<video src="${VIDEO[item.id]}" muted loop playsinline preload="metadata" aria-hidden="true"></video>`
         : `<img src="/${item.img}" alt="" class="${REDUCED ? '' : 'spin'}" loading="lazy">`;
-      const url = ctaUrl(item);
-      const ext = url.startsWith('http') ? ' target="_blank" rel="noopener"' : '';
       sec.innerHTML = `
         <div class="plat-in">
           <div class="plat-media">${media}</div>
@@ -117,10 +133,26 @@
             <h2>${item.nom}</h2>
             <p class="plat-desc">${item.desc}</p>
             <p class="plat-prix">${item.prix ? item.prix + ' €' : ''}</p>
-            <a class="plat-cta" href="${url}"${ext} aria-label="Commander ${item.nom}">COMMANDER</a>
+            ${ctaHtml(item)}
           </div>
         </div>`;
       fin.before(sec);
+    });
+
+    // ouverture/fermeture des menus déroulants COMMANDER
+    document.addEventListener('click', e => {
+      const toggle = e.target.closest('.cta-toggle');
+      document.querySelectorAll('.cta-drop.open').forEach(d => {
+        if (!toggle || d !== toggle.closest('.cta-drop')) {
+          d.classList.remove('open');
+          const t = d.querySelector('.cta-toggle'); if (t) t.setAttribute('aria-expanded', 'false');
+        }
+      });
+      if (toggle) {
+        const drop = toggle.closest('.cta-drop');
+        const open = drop.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
     });
 
     const screens = Array.from(document.querySelectorAll('.plat-screen'));

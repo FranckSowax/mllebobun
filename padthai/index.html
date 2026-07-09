@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pad Thai — Commander · Mademoiselle Bobùn</title>
+  <meta name="description" content="Commandez nos Pad Thai à emporter ou en Drive — paiement en ligne, retrait au 200 bis rue Malbec, Bordeaux.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/order.css">
+  <style>
+    :root {
+      --noir: #0B0805; --noir2: #151009; --ivoire: #F4EDE0; --caramel: #E8912D;
+      --mono: 'IBM Plex Mono', monospace; --sans: 'Be Vietnam Pro', sans-serif;
+      --glass-bg: rgba(21, 16, 9, .72);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: radial-gradient(ellipse at 50% 0%, #1b1206 0%, var(--noir) 60%); color: var(--ivoire); font-family: var(--sans); min-height: 100vh; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--caramel); outline-offset: 3px; border-radius: 6px; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 7vh 5vw 10vh; }
+    .eyebrow { font-family: var(--mono); font-size: .62rem; letter-spacing: .18em; color: var(--caramel); }
+    .intro { text-align: center; margin-bottom: 6vh; }
+    .intro h1 { font-weight: 900; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; margin: 10px 0 12px; }
+    .intro p { font-weight: 300; font-size: 1rem; line-height: 1.6; color: rgba(244, 237, 224, .8); max-width: 560px; margin: 0 auto; }
+    .choix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin-bottom: 5vh; }
+    .choix-card {
+      background: var(--noir2); border: 1px solid rgba(244, 237, 224, .1); border-radius: 20px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: border-color .25s, transform .25s;
+    }
+    .choix-card:hover { transform: translateY(-3px); }
+    .choix-media { aspect-ratio: 1 / 1; overflow: hidden; }
+    .choix-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .choix-card > .eyebrow { padding: 16px 18px 0; }
+    .choix-card h3 { font-weight: 900; font-size: 1.15rem; padding: 4px 18px 0; }
+    .choix-card > p { font-weight: 300; font-size: .84rem; line-height: 1.5; color: rgba(244, 237, 224, .72); padding: 8px 18px 6px; flex: 1; }
+    .choix-card .order-row { margin: 0 18px 16px; padding-top: 14px; }
+    .platform-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 5vh; }
+    .btn-brand {
+      display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+      padding: 14px 26px; border-radius: 999px; font-weight: 800; text-decoration: none;
+      font-size: 1rem; border: 1px solid transparent; transition: transform .2s, filter .2s;
+    }
+    .btn-brand:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-uber { background: #06C167; color: #0b0714; }
+    .btn-uber .eats { font-weight: 900; }
+    .btn-deliveroo { background: #00CCBC; color: #0b0714; font-style: italic; font-weight: 900; }
+    .back-home-row { text-align: center; margin-top: 2vh; }
+    .btn-back { background: transparent; border: 1px solid rgba(244, 237, 224, .3); color: var(--ivoire); font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; }
+    .foot-infos { text-align: center; font-family: var(--mono); font-size: .58rem; letter-spacing: .1em; color: rgba(244, 237, 224, .5); line-height: 2; margin-top: 5vh; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="intro">
+      <p class="eyebrow">NOUVEAU · NOUILLES SAUTÉES AU WOK</p>
+      <h1>Pad Thai</h1>
+      <p>Nos Pad Thai à emporter ou en Drive. Ajoutez vos plats, choisissez le mode de retrait, payez en ligne — votre code arrive sur WhatsApp.</p>
+    </div>
+
+    <div class="choix-grid">
+      <article class="choix-card" data-id="padthai_poulet">
+        <div class="choix-media"><img src="/assets/plats/padthai-poulet.webp" alt="Pad Thai Poulet" loading="lazy"></div>
+        <p class="eyebrow">VOLAILLE</p>
+        <h3>Pad Thai Poulet</h3>
+        <p>Nouilles de riz sautées au wok, poulet, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.</p>
+      </article>
+      <article class="choix-card" data-id="padthai_boeuf">
+        <div class="choix-media"><img src="/assets/plats/padthai-boeuf.webp" alt="Pad Thai Bœuf" loading="lazy"></div>
+        <p class="eyebrow">SIGNATURE</p>
+        <h3>Pad Thai Bœuf</h3>
+        <p>Nouilles de riz sautées au wok, bœuf, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.</p>
+      </article>
+      <article class="choix-card" data-id="padthai_crevette">
+        <div class="choix-media"><img src="/assets/plats/padthai-crevette.webp" alt="Pad Thai Crevette" loading="lazy"></div>
+        <p class="eyebrow">IODÉ</p>
+        <h3>Pad Thai Crevette</h3>
+        <p>Nouilles de riz sautées au wok, crevettes, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.</p>
+      </article>
+      <article class="choix-card" data-id="padthai_special">
+        <div class="choix-media"><img src="/assets/plats/padthai-special.webp" alt="Pad Thai Spécial Bœuf & Crevette" loading="lazy"></div>
+        <p class="eyebrow">LE PLUS GÉNÉREUX</p>
+        <h3>Pad Thai Spécial Bœuf &amp; Crevette</h3>
+        <p>Nouilles de riz sautées au wok, bœuf et crevettes, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.</p>
+      </article>
+    </div>
+
+    <div class="platform-row">
+      <a class="btn-brand btn-uber" href="https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw" target="_blank" rel="noopener" aria-label="Commander sur Uber Eats"><span>Uber</span><span class="eats">Eats</span></a>
+      <a class="btn-brand btn-deliveroo" href="https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun" target="_blank" rel="noopener" aria-label="Commander sur Deliveroo">deliveroo</a>
+    </div>
+
+    <div class="back-home-row">
+      <a class="btn-brand btn-back" href="../">← RETOUR À L'ACCUEIL</a>
+    </div>
+    <p class="foot-infos">200 BIS RUE MALBEC, 33000 BORDEAUX · LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>
+      <a href="tel:+33557955439">+33 5 57 95 54 39</a></p>
+  </main>
+
+  <script>
+    window.ORDER_ITEMS = [
+      { id: 'padthai_poulet', price: 1390 },
+      { id: 'padthai_boeuf', price: 1490 },
+      { id: 'padthai_crevette', price: 1490 },
+      { id: 'padthai_special', price: 1790 }
+    ];
+  </script>
+  <script src="../js/order.js" defer></script>
+</body>
+</html>

@@ -43,6 +43,7 @@
 
   const PAGE = location.pathname.includes('/bobunbeef') ? '/bobunbeef/'
     : location.pathname.includes('/loclac') ? '/loclac/'
+    : location.pathname.includes('/padthai') ? '/padthai/'
     : location.pathname.includes('/film') ? '/film'
     : '/';
 
@@ -71,10 +72,14 @@
   box.className = 'order-box';
   box.hidden = true;
   box.innerHTML = `
-    <p class="eyebrow">À EMPORTER · PAIEMENT EN LIGNE</p>
-    <p class="order-pickup-note">🥡 Commande <strong>à emporter</strong>&nbsp;: vous venez la récupérer au
+    <p class="eyebrow">PAIEMENT EN LIGNE</p>
+    <div class="order-mode" role="group" aria-label="Mode de retrait">
+      <button type="button" class="mode-opt on" data-mode="emporter">🥡 À emporter</button>
+      <button type="button" class="mode-opt" data-mode="drive">🚗 Drive</button>
+    </div>
+    <p class="order-pickup-note" id="order-mode-note">🥡 <strong>À emporter</strong>&nbsp;: vous venez la récupérer au
       <strong>200 bis rue Malbec, Bordeaux</strong>. Votre code de retrait arrive sur WhatsApp.</p>
-    <p class="order-sups-hint">Ajoutez un bol, puis choisissez ses suppléments&nbsp;: chaque bol a les siens.</p>
+    <p class="order-sups-hint">Ajoutez un plat, puis choisissez ses suppléments&nbsp;: chaque plat a les siens.</p>
     <div class="order-lines" aria-live="polite"></div>
     <label class="order-note-label" for="order-wa">VOTRE NUMÉRO WHATSAPP · POUR RECEVOIR LE CODE DE RETRAIT ET SON QR CODE</label>
     <input id="order-wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="06 12 34 56 78" required>
@@ -95,6 +100,24 @@
   const supById = Object.fromEntries(SUPS.map(s => [s.id, s]));
   let lines = [];   // { uid, dishId, sups: { supId: true } }
   let uidSeq = 1;
+  let mode = new URLSearchParams(location.search).get('mode') === 'drive' ? 'drive' : 'emporter';
+
+  const modeNote = box.querySelector('#order-mode-note');
+  const NOTE = {
+    emporter: '🥡 <strong>À emporter</strong>&nbsp;: vous venez la récupérer au <strong>200 bis rue Malbec, Bordeaux</strong>. Votre code de retrait arrive sur WhatsApp.',
+    drive: '🚗 <strong>Drive</strong>&nbsp;: restez en voiture, on vous apporte la commande ! Après paiement, WhatsApp vous demandera la description de votre véhicule.'
+  };
+  function applyMode(m) {
+    mode = m;
+    box.querySelectorAll('.mode-opt').forEach(o => o.classList.toggle('on', o.dataset.mode === m));
+    modeNote.innerHTML = NOTE[m];
+    payBtn.firstChild.textContent = (m === 'drive' ? 'Payer (Drive) — ' : 'Payer — ');
+  }
+  box.querySelector('.order-mode').addEventListener('click', e => {
+    const b = e.target.closest('.mode-opt');
+    if (b) applyMode(b.dataset.mode);
+  });
+  if (mode === 'drive') applyMode('drive');
 
   function bowlName(id) {
     const card = grid.querySelector(`.choix-card[data-id="${id}"] h3`);
@@ -181,7 +204,8 @@
           lines: lines.map(l => ({ dish: l.dishId, sups: Object.keys(l.sups) })),
           note: document.getElementById('order-note').value,
           wa: waInput.value,
-          page: PAGE
+          page: PAGE,
+          mode
         })
       });
       const data = await res.json().catch(() => ({}));
