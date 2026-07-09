@@ -181,6 +181,7 @@
     .demo-link { color: #b79dff; border-color: rgba(155,120,255,.45); text-decoration: none; display: inline-flex; align-items: center; }
     .demo-link:hover { background: rgba(155,120,255,.12); }
     .badge.drv { background: rgba(61,139,255,.14); color: #7db4ff; border-color: rgba(61,139,255,.5); margin-top: 5px; display: inline-block; }
+    .badge.drvw { background: rgba(61,139,255,.08); color: #7db4ff; border-color: rgba(61,139,255,.35); margin-top: 5px; display: inline-block; }
 
     #modal {
       position: fixed; inset: 0; z-index: 120;
@@ -538,7 +539,8 @@
             : o.status === 'sur place'
             ? '<span class="badge sp">SUR PLACE</span>'
             : '<span class="badge">PAYÉE</span>'}${o.drive
-            ? `<br><span class="badge drv" title="${(o.drive.vehicle || '').replace(/"/g, '&quot;')}">🚗 EN DRIVE</span>` : ''}</td>
+            ? `<br><span class="badge drv" title="${(o.drive.vehicle || '').replace(/"/g, '&quot;')}">🚗 EN DRIVE</span>`
+            : o.driveWanted ? '<br><span class="badge drvw">🚗 DRIVE</span>' : ''}</td>
           <td><button class="print-btn" data-sid="${o.sessionId}" title="Imprimer le ticket" aria-label="Imprimer la commande ${o.code}">🖨</button></td>
         </tr>`;
       }

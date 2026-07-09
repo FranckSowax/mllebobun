@@ -309,7 +309,8 @@ async function sendCustomerWhatsApp(order) {
     console.error(e.message);
     await whapi('/messages/text', { to, body: caption }).catch(err => console.error(err.message));
   }
-  // Drive : géré uniquement sur la page de retrait (merci.html). Rien sur WhatsApp.
+  // Commande « Drive » choisie au paiement : on enclenche le flux véhicule sur WhatsApp.
+  if (order.driveWanted) await sendDriveProposal(order, to).catch(e => console.error('drive proposal:', e.message));
 }
 
 /* ---------- Flux Drive : itinéraire (bouton), véhicule, puis bouton « garé » ---------- */
@@ -415,7 +416,8 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         note: (s.metadata && s.metadata.note !== '—' && s.metadata.note) || '',
         phone: (s.metadata && s.metadata.wa) || (s.customer_details && s.customer_details.phone) || '',
         email: (s.customer_details && s.customer_details.email) || '',
-        status: 'payée'
+        status: 'payée',
+        driveWanted: (s.metadata && s.metadata.mode) === 'drive'
       };
       saveOrder(order);
       // WhatsApp en arrière-plan — la réponse au webhook ne doit pas attendre
@@ -447,7 +449,8 @@ app.get('/api/health', (req, res) => {
 app.post('/api/checkout', async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Paiement non configuré.' });
   try {
-    const { items, lines, note, page, wa } = req.body || {};
+    const { items, lines, note, page, wa, mode } = req.body || {};
+    const driveMode = mode === 'drive';
 
     const waDigits = frPhoneToWa(wa);
     if (waDigits.length < 10 || waDigits.length > 15) {
@@ -509,9 +512,9 @@ app.post('/api/checkout', async (req, res) => {
       locale: 'fr',
       submit_type: 'pay',
       line_items,
-      metadata: { source: 'site — à emporter', note: cleanNote || '—', code, wa: waDigits },
+      metadata: { source: driveMode ? 'site — Drive' : 'site — à emporter', note: cleanNote || '—', code, wa: waDigits, mode: driveMode ? 'drive' : 'emporter' },
       payment_intent_data: {
-        description: `Commande à emporter ${code} — Mademoiselle Bobùn`
+        description: `Commande ${driveMode ? 'Drive' : 'à emporter'} ${code} — Mademoiselle Bobùn`
           + (cleanNote ? ` · Note : ${cleanNote.slice(0, 180)}` : '')
       },
       success_url: `${origin}/merci.html?session_id={CHECKOUT_SESSION_ID}`,
@@ -528,7 +531,7 @@ app.post('/api/checkout', async (req, res) => {
 /* ---------- DÉMO : paiement simulé, workflows réels ---------- */
 app.post('/api/demo', checkKey, async (req, res) => {
   try {
-    const { wa, note, item } = req.body || {};
+    const { wa, note, item, mode } = req.body || {};
     const waDigits = frPhoneToWa(wa);
     if (waDigits.length < 10 || waDigits.length > 15) {
       return res.status(400).json({ error: 'Numéro WhatsApp requis (pour recevoir le code de la démo).' });
@@ -546,7 +549,8 @@ app.post('/api/demo', checkKey, async (req, res) => {
       items, amount: 0,
       note: String(note || '').slice(0, 400).trim(),
       phone: waDigits, email: '',
-      status: 'démo'
+      status: 'démo',
+      driveWanted: mode === 'drive'
     };
     saveOrder(order);                                   // dashboard + overlay + impression + Supabase
     sendCustomerWhatsApp(order).catch(e => console.error('demo wa client:', e.message)); // code + QR + Drive
@@ -797,11 +801,64 @@ async function handleWhapiBody(body) {
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
+    const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
-    if (!text) continue;
-    if (!settings.chatbot) { console.log('concierge désactivé, message ignoré:', from); continue; }
+    const now = Date.now();
 
-    // Tout message texte -> Concierge IA (le Drive est géré sur la page de retrait, pas sur WhatsApp)
+    /* ---- Flux DRIVE : actif UNIQUEMENT si le client a une commande Drive en cours
+       (état awaitingVehicle / awaitingPark posé après un paiement « Drive »). Sinon → concierge. ---- */
+
+    // 1) clic « je suis garé devant »
+    if (btn) {
+      const looksDrive = String(btn.id || '').includes('drive_') || /gar[ée]|devant|arriv/i.test(String(btn.title || '').toLowerCase());
+      if (looksDrive || awaitingPark.has(from)) {
+        const mD = String(btn.id || '').match(/drive_([A-Za-z0-9_]+)/);
+        const order = (mD && orders.find(o => o.sessionId === mD[1])) || findRecentOrderByPhone(from);
+        const parked = awaitingPark.get(from);
+        if (order) {
+          const vehicle = (parked && parked.vehicle) || '';
+          markDrive(order, vehicle);
+          awaitingPark.delete(from);
+          if (vehicle) {
+            await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande à la voiture !' }).catch(() => {});
+          } else {
+            awaitingVehicle.set(from, { sessionId: order.sessionId, until: now + DRIVE_TTL });
+            await whapi('/messages/text', { to: from, body: '🚗 Bien reçu ! Décrivez votre véhicule (couleur, modèle ou plaque) pour qu’on vous trouve.' }).catch(() => {});
+          }
+        }
+        continue;
+      }
+    }
+
+    if (!text) continue;
+
+    // 2) le client donne la description de son véhicule (commande Drive en attente) → bouton « garé »
+    const av = awaitingVehicle.get(from);
+    if (av && av.until > now) {
+      const order = orders.find(o => o.sessionId === av.sessionId);
+      if (order) await sendParkButton(order, from, text.slice(0, 120));
+      continue;
+    }
+
+    // 3) « GARÉ … » en texte libre, uniquement si une commande Drive est en attente
+    const ap = awaitingPark.get(from);
+    const g = text.match(/^\s*gar[ée]?e?\b[\s:،-]*(.*)$/i);
+    if (g && ap && ap.until > now) {
+      const order = orders.find(o => o.sessionId === ap.sessionId);
+      if (order) { markDrive(order, (g[1] || '').trim() || ap.vehicle || ''); awaitingPark.delete(from); await whapi('/messages/text', { to: from, body: '✅ C’est noté — on vous apporte votre commande !' }).catch(() => {}); }
+      continue;
+    }
+
+    // 4) déjà garé, le client précise/màj son véhicule
+    if (ap && ap.until > now) {
+      ap.vehicle = text.slice(0, 120);
+      const order = orders.find(o => o.sessionId === ap.sessionId);
+      if (order && order.drive) markDrive(order, ap.vehicle);
+      continue;
+    }
+
+    // ---- sinon : Concierge IA ----
+    if (!settings.chatbot) { console.log('concierge désactivé, message ignoré:', from); continue; }
     await conciergeReply(from, text).catch(e => console.error('concierge:', e.message));
   }
 }
