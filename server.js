@@ -623,7 +623,7 @@ function dishEmoji(id) {
   if (/veggie/.test(id)) return '🌱';
   return '🥩';
 }
-function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : '/bobunbeef/'; }
+function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : cat === 'padthai' ? '/' : '/bobunbeef/'; }
 function dishJpg(item) {
   const m = String(item.image || '').match(/\/assets\/plats\/([a-z0-9-]+)\.webp$/i);
   return m ? `/assets/plats/${m[1]}.jpg` : '';
@@ -973,7 +973,7 @@ app.post('/api/menu', checkKey, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Le nom est requis.' });
     const amount = Math.max(0, Math.round(Number(b.amount) || 0));
     const row = {
-      id, cat: ['bobun', 'loclac', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
+      id, cat: ['bobun', 'loclac', 'padthai', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
       name, name_vn: String(b.name_vn || '').slice(0, 80),
       description: String(b.description || '').slice(0, 400),
       amount, image: String(b.image || '').slice(0, 400),
