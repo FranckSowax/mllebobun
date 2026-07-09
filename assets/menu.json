@@ -11,6 +11,11 @@
       "burst": "pepper"
     },
     {
+      "id": "padthai",
+      "label": "PAD THAI",
+      "burst": "peanuts"
+    },
+    {
       "id": "rolls",
       "label": "NEMS & ROULEAUX",
       "burst": "herbs"
@@ -93,6 +98,50 @@
       "imgSm": "assets/plats/loclac-veggie@sm.webp",
       "url": "https://mademoisellebobun.com/product/loc-lac-veggie-2/",
       "loclac_shake": true
+    },
+    {
+      "cat": "padthai",
+      "id": "padthai-poulet",
+      "nom": "PAD THAI POULET",
+      "desc": "Nouilles de riz sautées au wok, poulet, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.",
+      "prix": "13,90",
+      "img": "assets/plats/padthai-poulet.webp",
+      "imgSm": "assets/plats/padthai-poulet@sm.webp",
+      "url": "https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw",
+      "loclac_shake": false
+    },
+    {
+      "cat": "padthai",
+      "id": "padthai-boeuf",
+      "nom": "PAD THAI BŒUF",
+      "desc": "Nouilles de riz sautées au wok, bœuf, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.",
+      "prix": "14,90",
+      "img": "assets/plats/padthai-boeuf.webp",
+      "imgSm": "assets/plats/padthai-boeuf@sm.webp",
+      "url": "https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw",
+      "loclac_shake": false
+    },
+    {
+      "cat": "padthai",
+      "id": "padthai-crevette",
+      "nom": "PAD THAI CREVETTE",
+      "desc": "Nouilles de riz sautées au wok, crevettes, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.",
+      "prix": "14,90",
+      "img": "assets/plats/padthai-crevette.webp",
+      "imgSm": "assets/plats/padthai-crevette@sm.webp",
+      "url": "https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw",
+      "loclac_shake": false
+    },
+    {
+      "cat": "padthai",
+      "id": "padthai-special",
+      "nom": "PAD THAI SPÉCIAL BŒUF & CREVETTE",
+      "desc": "Nouilles de riz sautées au wok, bœuf et crevettes, œuf, pousses de soja, cacahuètes, ciboulette, sauce tamarin et citron vert.",
+      "prix": "17,90",
+      "img": "assets/plats/padthai-special.webp",
+      "imgSm": "assets/plats/padthai-special@sm.webp",
+      "url": "https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw",
+      "loclac_shake": false
     },
     {
       "cat": "rolls",

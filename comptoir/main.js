@@ -70,7 +70,8 @@
   // menu.json + prix à jour du dashboard (menu_items via /api/menu/public)
   const VMAP = {
     'bobun-boeuf': 'boeuf', 'bobun-poulet': 'poulet', 'bobun-crevette': 'crevette', 'bobun-veggie': 'veggie',
-    'loclac-boeuf': 'loclac_boeuf', 'loclac-poulet': 'loclac_poulet', 'loclac-veggie': 'loclac_veggie'
+    'loclac-boeuf': 'loclac_boeuf', 'loclac-poulet': 'loclac_poulet', 'loclac-veggie': 'loclac_veggie',
+    'padthai-poulet': 'padthai_poulet', 'padthai-boeuf': 'padthai_boeuf', 'padthai-crevette': 'padthai_crevette', 'padthai-special': 'padthai_special'
   };
   Promise.all([
     fetch('/assets/menu.json').then(r => r.json()),

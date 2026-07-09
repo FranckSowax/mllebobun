@@ -616,6 +616,9 @@ app.post('/api/drive', async (req, res) => {
 /* ---------- Menu via sondage (poll) : la carte + réponse auto au vote ---------- */
 
 const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
+const UBER_URL = 'https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw';
+// Pad Thai n'a pas encore de page panier -> commande via Uber Eats ; sinon page du site
+function orderUrl(dish) { return dish && dish.cat === 'padthai' ? UBER_URL : SITE() + dishPage(dish ? dish.cat : ''); }
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
   if (/crevette/.test(id)) return '🦐';
@@ -662,7 +665,7 @@ async function sendDishCard(to, dish) {
   } else {
     await whapi('/messages/text', { to, body: caption }).catch(() => {});
   }
-  await sendOrderButton(to, SITE() + dishPage(dish.cat), dish.id);
+  await sendOrderButton(to, orderUrl(dish), dish.id);
 }
 
 // la carte en texte (liste des plats + prix)
@@ -749,7 +752,7 @@ async function conciergeReply(from, text) {
     await sendDishCard(from, byId[args.dish_id]);
   } else if (name === 'envoyer_lien_commande') {
     const d = byId[args.dish_id];
-    await sendOrderButton(from, SITE() + (d ? dishPage(d.cat) : '/bobunbeef/'), d && d.id);
+    await sendOrderButton(from, d ? orderUrl(d) : SITE() + '/bobunbeef/', d && d.id);
   } else if (name === 'parler_a_humain') {
     await whapi('/messages/text', { to: from, body: 'Je transmets tout de suite à l’équipe, on revient vers vous très vite 🙏\nBesoin urgent ? Appelez-nous au 05 57 95 54 39.' }).catch(() => {});
     if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🔔 *Message client à traiter*\n_Tin nhắn khách cần xử lý_\n\n👤 +${from}\n« ${text.slice(0, 300)} »${args.resume ? '\n📝 ' + args.resume : ''}` }).catch(() => {});
