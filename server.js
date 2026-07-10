@@ -13,6 +13,8 @@
      TEAM_WHATSAPP          numéro WhatsApp équipe, chiffres seuls (33612345678)
      DASHBOARD_KEY          clé d'accès au dashboard
      DATA_DIR               répertoire de persistance (volume Railway : /data)
+     PRINTER_IP             IP de l'imprimante tickets (défaut 192.168.1.16)
+     PRINTER_PORT           port RAW (défaut 9100)
    ============================================================ */
 
 'use strict';
@@ -20,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const net = require('net');
 const express = require('express');
 const Stripe = require('stripe');
 const QRCode = require('qrcode');
@@ -37,6 +40,8 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // jeton dérivé pour sécuriser le webhook Whapi entrant
 const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const PRINTER_IP = process.env.PRINTER_IP || '192.168.1.16';
+const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
@@ -238,11 +243,70 @@ function appendLine(obj) {
   }
 }
 
+/* ---------- Impression ticket (Star mC-Print3 ESC/POS) ---------- */
+
+function buildTicketBuffer(order) {
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  const INIT = ESC + '\x40';
+  const CENTER = ESC + 'a\x01';
+  const LEFT = ESC + 'a\x00';
+  const BOLD_ON = ESC + 'E\x01';
+  const BOLD_OFF = ESC + 'E\x00';
+  const DOUBLE = ESC + '!\x30';   // double largeur + double hauteur
+  const NORMAL = ESC + '!\x00';
+  const CUT = GS + 'V\x41\x03'; // coupe partielle avec avance
+
+  const sep = '--------------------------------\n';
+  const d = new Date(order.date);
+  const heure = d.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  let t = '';
+  t += INIT;
+  t += CENTER;
+  t += BOLD_ON + 'MADEMOISELLE BOBUN\n' + BOLD_OFF;
+  t += '200 bis rue Malbec, Bordeaux\n';
+  t += sep;
+  t += DOUBLE + order.code + '\n' + NORMAL;
+  t += sep;
+  t += LEFT;
+  for (const i of order.items) {
+    const prix = typeof i.amount === 'number' ? '  ' + (i.amount / 100).toFixed(2).replace('.', ',') + ' E' : '';
+    t += BOLD_ON + ' ' + i.qty + ' x ' + BOLD_OFF + i.name + prix + '\n';
+  }
+  t += sep;
+  if (order.amount) {
+    t += CENTER + BOLD_ON + 'TOTAL : ' + (order.amount / 100).toFixed(2).replace('.', ',') + ' EUR\n' + BOLD_OFF;
+  }
+  if (order.note) {
+    t += LEFT + 'Note : ' + order.note + '\n';
+  }
+  t += CENTER + heure + '\n';
+  t += order.status ? order.status.toUpperCase() + '\n' : '';
+  t += '\n\n';
+  t += CUT;
+  return Buffer.from(t, 'binary');
+}
+
+function printTicket(order, copies = 2) {
+  if (!PRINTER_IP) return;
+  const buf = buildTicketBuffer(order);
+  const full = Buffer.concat(Array(copies).fill(buf));
+  const sock = new net.Socket();
+  sock.setTimeout(5000);
+  sock.connect(PRINTER_PORT, PRINTER_IP, () => {
+    sock.write(full, () => sock.end());
+  });
+  sock.on('error', e => console.error('imprimante:', e.message));
+  sock.on('timeout', () => { console.error('imprimante: timeout'); sock.destroy(); });
+}
+
 function saveOrder(order) {
   orders.push(order);
   appendLine(order);
   sbUpsert(order);
   broadcast('order', order);
+  printTicket(order);
 }
 
 /* ---------- SSE (dashboard temps réel) ---------- */
@@ -440,6 +504,7 @@ app.get('/api/health', (req, res) => {
     whapi: !!WHAPI_TOKEN,
     team: !!TEAM_WHATSAPP,
     supabase: !!sb,
+    printer: PRINTER_IP || false,
     orders: orders.length
   });
 });
@@ -991,6 +1056,21 @@ app.post('/api/settings', checkKey, (req, res) => {
   saveSettings();
   console.log('settings: chatbot', settings.chatbot ? 'ON' : 'OFF');
   res.json(settings);
+});
+
+/* impression ticket via réseau (Star mC-Print3) depuis le dashboard */
+app.post('/api/print', checkKey, (req, res) => {
+  const { sessionId } = req.body || {};
+  const order = orders.find(o => o.sessionId === sessionId);
+  if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+  if (!PRINTER_IP) return res.status(503).json({ error: 'Imprimante non configurée (PRINTER_IP)' });
+  try {
+    printTicket(order, 2);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('api print:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /* catalogue pour la prise de commande sur place (piloté par le menu) */
