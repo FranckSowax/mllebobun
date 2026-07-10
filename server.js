@@ -450,6 +450,14 @@ async function sendTeamWhatsApp(order) {
 const app = express();
 app.set('trust proxy', 1);
 
+/* CORS pour le Print Agent local (file:// ou autre origine) */
+app.use('/api', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dash-Key');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 /* Webhook Stripe : corps brut AVANT express.json pour la signature */
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) return res.status(503).end();

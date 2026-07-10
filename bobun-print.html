@@ -7,9 +7,11 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0B0805; color: #F4EDE0; font-family: system-ui, sans-serif; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; }
     h1 { font-size: 1.4rem; }
+    .sub { font-size: .7rem; color: rgba(244,237,224,.4); text-align: center; max-width: 420px; }
     .status { font-size: .85rem; padding: 8px 18px; border-radius: 999px; border: 1px solid #333; }
     .status.ok { color: #2ECC71; border-color: rgba(46,204,113,.5); }
     .status.err { color: #ff9d7a; border-color: rgba(255,157,122,.5); }
+    .status.wait { color: #E8912D; border-color: rgba(232,145,45,.5); }
     #log { background: #151009; border: 1px solid #222; border-radius: 12px; padding: 16px; width: min(600px, 90vw); max-height: 50vh; overflow-y: auto; font-family: monospace; font-size: .75rem; line-height: 1.6; }
     .log-ok { color: #2ECC71; }
     .log-err { color: #ff9d7a; }
@@ -17,57 +19,60 @@
     input, button { font-family: monospace; font-size: .85rem; padding: 10px 16px; border-radius: 10px; border: 1px solid #333; background: #151009; color: #F4EDE0; }
     button { cursor: pointer; background: #E8912D; color: #0B0805; font-weight: 700; border: none; }
     button:hover { opacity: .85; }
-    .row { display: flex; gap: 10px; align-items: center; }
-    label { font-size: .75rem; color: rgba(244,237,224,.5); }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    label { font-size: .75rem; color: rgba(244,237,224,.5); min-width: 110px; }
+    .count { font-family: monospace; font-size: 2rem; color: #2ECC71; }
   </style>
 </head>
 <body>
   <h1>Bobun Print Agent</h1>
+  <p class="sub">Cette page doit rester ouverte sur l'ordinateur du restaurant.<br>Elle imprime automatiquement chaque nouvelle commande (x2 tickets).</p>
+
   <p class="status" id="printer-status">Verification imprimante...</p>
   <p class="status" id="sse-status">SSE: non connecte</p>
-
-  <div class="row">
-    <label>CLE DASHBOARD</label>
-    <input id="key" type="password" placeholder="cle d'acces" value="">
-    <button id="connect-btn">CONNECTER</button>
-  </div>
+  <p class="count" id="count">0 ticket(s)</p>
 
   <div class="row">
     <label>SERVEUR</label>
-    <input id="server" type="text" placeholder="https://mllebobun-production.up.railway.app" value="https://mllebobun-production.up.railway.app" style="width:360px">
+    <input id="server" type="text" value="https://mllebobun-production.up.railway.app" style="width:360px">
   </div>
-
+  <div class="row">
+    <label>CLE DASHBOARD</label>
+    <input id="key" type="password" placeholder="cle d'acces">
+    <button id="connect-btn">CONNECTER</button>
+  </div>
   <div class="row">
     <label>IP IMPRIMANTE</label>
     <input id="printer-ip" type="text" value="192.168.1.16" style="width:160px">
-    <button id="test-btn">TESTER IMPRIMANTE</button>
+    <button id="test-btn">TESTER</button>
   </div>
 
   <div id="log"></div>
 
   <script>
     var logEl = document.getElementById('log');
-    var printerStatus = document.getElementById('printer-status');
-    var sseStatus = document.getElementById('sse-status');
+    var printerSt = document.getElementById('printer-status');
+    var sseSt = document.getElementById('sse-status');
+    var countEl = document.getElementById('count');
+    var ticketCount = 0;
     var printed = {};
     var evtSource = null;
 
     function log(msg, cls) {
       var d = new Date();
       var ts = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      logEl.innerHTML += '<div class="' + (cls || 'log-info') + '">' + ts + ' ' + msg + '</div>';
+      logEl.innerHTML += '<div class="' + (cls || 'log-info') + '">' + ts + '  ' + msg + '</div>';
       logEl.scrollTop = logEl.scrollHeight;
     }
 
     function printerUrl() {
       return 'http://' + document.getElementById('printer-ip').value + '/StarWebPRNT/SendMessage';
     }
-
     function serverUrl() {
       return document.getElementById('server').value.replace(/\/$/, '');
     }
 
-    // --- ESC/POS ticket builder ---
+    /* ---- ESC/POS ticket ---- */
 
     function ascii(s) {
       return String(s || '')
@@ -132,7 +137,7 @@
       return btoa(bin);
     }
 
-    // --- StarWebPRNT ---
+    /* ---- StarWebPRNT ---- */
 
     function sendToPrinter(bytes) {
       var b64 = bytesToBase64(bytes);
@@ -149,21 +154,20 @@
       }).then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
-      }).then(function(txt) {
-        if (txt.indexOf('success') === -1) throw new Error('echec imprimante');
+      }).then(function(t) {
+        if (t.indexOf('success') === -1) throw new Error('echec imprimante');
       });
     }
 
     function printOrder(o) {
       var ticket = buildTicketBytes(o);
-      // 2 exemplaires
       var double = new Uint8Array(ticket.length * 2);
       double.set(ticket, 0);
       double.set(ticket, ticket.length);
       return sendToPrinter(double);
     }
 
-    // --- Test imprimante ---
+    /* ---- Test imprimante ---- */
 
     function testPrinter() {
       var b = [];
@@ -176,33 +180,35 @@
     }
 
     document.getElementById('test-btn').addEventListener('click', function() {
+      printerSt.textContent = 'Test en cours...';
+      printerSt.className = 'status wait';
       testPrinter()
         .then(function() {
-          printerStatus.textContent = 'Imprimante OK';
-          printerStatus.className = 'status ok';
+          printerSt.textContent = 'Imprimante OK';
+          printerSt.className = 'status ok';
           log('Test imprimante OK', 'log-ok');
         })
         .catch(function(e) {
-          printerStatus.textContent = 'Imprimante erreur : ' + e.message;
-          printerStatus.className = 'status err';
+          printerSt.textContent = 'Erreur : ' + e.message;
+          printerSt.className = 'status err';
           log('Test imprimante ECHEC : ' + e.message, 'log-err');
         });
     });
 
-    // --- Check printer on load ---
+    /* ---- Auto-detect imprimante au chargement ---- */
     testPrinter()
       .then(function() {
-        printerStatus.textContent = 'Imprimante connectee';
-        printerStatus.className = 'status ok';
-        log('Imprimante Star mC-Print3 detectee', 'log-ok');
+        printerSt.textContent = 'Imprimante connectee';
+        printerSt.className = 'status ok';
+        log('Star mC-Print3 detectee sur ' + document.getElementById('printer-ip').value, 'log-ok');
       })
       .catch(function(e) {
-        printerStatus.textContent = 'Imprimante non joignable';
-        printerStatus.className = 'status err';
-        log('Imprimante non joignable : ' + e.message, 'log-err');
+        printerSt.textContent = 'Imprimante non joignable';
+        printerSt.className = 'status err';
+        log('Imprimante non joignable : ' + e.message + ' (verifiez IP et reseau wifi)', 'log-err');
       });
 
-    // --- SSE connection ---
+    /* ---- SSE : ecoute les nouvelles commandes ---- */
 
     function connectSSE() {
       var key = document.getElementById('key').value.trim();
@@ -210,17 +216,22 @@
       if (evtSource) { evtSource.close(); evtSource = null; }
 
       localStorage.setItem('bobun_print_key', key);
+      localStorage.setItem('bobun_print_server', serverUrl());
+
+      /* On utilise un polling fetch au lieu de EventSource pour envoyer le header X-Dash-Key
+         (EventSource ne supporte pas les headers custom).
+         Le polling recree une connexion SSE standard mais avec le key en query param. */
       var url = serverUrl() + '/api/orders/stream?key=' + encodeURIComponent(key);
-      log('Connexion SSE : ' + serverUrl() + '...');
-      sseStatus.textContent = 'SSE: connexion...';
-      sseStatus.className = 'status';
+      log('Connexion SSE vers ' + serverUrl() + ' ...');
+      sseSt.textContent = 'SSE: connexion...';
+      sseSt.className = 'status wait';
 
       evtSource = new EventSource(url);
 
       evtSource.onopen = function() {
-        sseStatus.textContent = 'SSE: connecte';
-        sseStatus.className = 'status ok';
-        log('SSE connecte - en attente de commandes', 'log-ok');
+        sseSt.textContent = 'SSE: connecte - en attente';
+        sseSt.className = 'status ok';
+        log('Connecte au serveur - impression automatique active', 'log-ok');
       };
 
       evtSource.addEventListener('order', function(e) {
@@ -228,26 +239,38 @@
           var o = JSON.parse(e.data);
           if (printed[o.sessionId]) return;
           printed[o.sessionId] = true;
-          log('Nouvelle commande : ' + o.code + ' (' + (o.items || []).length + ' article(s), ' + eur(o.amount) + ')');
+          log('COMMANDE : ' + o.code + ' (' + (o.items || []).length + ' article(s), ' + eur(o.amount) + ')');
           printOrder(o)
-            .then(function() { log('Imprime : ' + o.code + ' (x2)', 'log-ok'); })
-            .catch(function(err) { log('Echec impression ' + o.code + ' : ' + err.message, 'log-err'); });
+            .then(function() {
+              ticketCount += 2;
+              countEl.textContent = ticketCount + ' ticket(s)';
+              log('IMPRIME : ' + o.code + ' (x2)', 'log-ok');
+            })
+            .catch(function(err) {
+              log('ECHEC impression ' + o.code + ' : ' + err.message, 'log-err');
+            });
         } catch (err) {
-          log('Erreur parse commande : ' + err.message, 'log-err');
+          log('Erreur : ' + err.message, 'log-err');
         }
       });
 
+      evtSource.addEventListener('drive', function() {}); // ignore drive events
+
       evtSource.onerror = function() {
-        sseStatus.textContent = 'SSE: deconnecte (reconnexion auto)';
-        sseStatus.className = 'status err';
-        log('SSE deconnecte, reconnexion automatique...', 'log-err');
+        sseSt.textContent = 'SSE: reconnexion...';
+        sseSt.className = 'status err';
       };
     }
 
     document.getElementById('connect-btn').addEventListener('click', connectSSE);
+    document.getElementById('key').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') connectSSE();
+    });
 
-    // restore saved key
+    /* ---- Restore saved config ---- */
     var savedKey = localStorage.getItem('bobun_print_key') || '';
+    var savedServer = localStorage.getItem('bobun_print_server') || '';
+    if (savedServer) document.getElementById('server').value = savedServer;
     if (savedKey) {
       document.getElementById('key').value = savedKey;
       connectSSE();
