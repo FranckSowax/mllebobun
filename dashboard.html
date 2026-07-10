@@ -725,23 +725,103 @@
       function stopAlert() { if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; } }
 
       /* ============================================================
-         IMPRIMANTE RÉSEAU (Star mC-Print3 via API serveur)
+         IMPRIMANTE RÉSEAU (Star mC-Print3 via StarWebPRNT)
+         Impression directe depuis le navigateur vers l'imprimante
+         locale via HTTP (pas besoin de passer par le serveur Railway)
          ============================================================ */
 
+      const PRINTER_URL = 'http://192.168.1.16/StarWebPRNT/SendMessage';
       const btBtn = $('#bt-connect');
-      const printed = new Set(); // anti double impression auto
-      let printerOk = true;      // reseau = toujours prete par defaut
+      const printed = new Set();
+
+      const ascii = s => String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/['\u2019]/g, "'")
+        .replace(/[\u0153\u0152]/g, 'oe').replace(/\u20ac/g, 'EUR')
+        .replace(/[\u00ab\u00bb\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+        .replace(/[^\x20-\x7E\n]/g, '');
+
+      function line2(left, right, w) {
+        w = w || 32;
+        left = ascii(left); right = ascii(right);
+        var sp = Math.max(1, w - left.length - right.length);
+        return left + ' '.repeat(sp) + right + '\n';
+      }
+
+      function buildTicketBytes(o) {
+        var b = [];
+        var push = function() { for (var i = 0; i < arguments.length; i++) b.push(arguments[i]); };
+        var txt = function(s) { var a = ascii(s); for (var i = 0; i < a.length; i++) push(a.charCodeAt(i)); };
+        var ESC = 0x1B, GS = 0x1D;
+        push(ESC, 0x40);                          // init
+        push(ESC, 0x61, 1);                       // centre
+        push(ESC, 0x45, 1); txt('MADEMOISELLE BOBUN\n'); push(ESC, 0x45, 0);
+        txt('200 bis rue Malbec, Bordeaux\n');
+        txt('--------------------------------\n');
+        push(GS, 0x21, 0x11);                     // double taille
+        txt(o.code + '\n');
+        push(GS, 0x21, 0x00);
+        var d = new Date(o.date);
+        txt(d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '\n');
+        txt('--------------------------------\n');
+        push(ESC, 0x61, 0);                       // gauche
+        o.items.forEach(function(i) {
+          txt(line2(i.qty + ' x ' + i.name, eur(i.amount).replace('\u20ac', 'E')));
+        });
+        txt('--------------------------------\n');
+        push(ESC, 0x45, 1);
+        txt(line2('TOTAL', eur(o.amount).replace('\u20ac', 'E')));
+        push(ESC, 0x45, 0);
+        if (o.note) {
+          txt('--------------------------------\n');
+          push(ESC, 0x45, 1); txt('NOTE :\n'); push(ESC, 0x45, 0);
+          txt(ascii(o.note) + '\n');
+        }
+        if (o.phone) txt('\nClient : ' + ascii(o.phone) + '\n');
+        push(ESC, 0x61, 1);
+        txt(o.status === 'sur place'
+          ? '\nSUR PLACE - A ENCAISSER\nMerci !\n'
+          : '\nA EMPORTER - PAYEE EN LIGNE\nMerci !\n');
+        push(ESC, 0x64, 4);                       // avance papier
+        push(GS, 0x56, 0x42, 0x00);               // coupe partielle
+        return new Uint8Array(b);
+      }
+
+      function bytesToBase64(bytes) {
+        var bin = '';
+        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin);
+      }
+
+      async function sendToPrinter(bytes) {
+        var b64 = bytesToBase64(bytes);
+        var xml = '<?xml version="1.0" encoding="UTF-8"?>'
+          + '<StarWebPrint xmlns="http://www.star-m.jp">'
+          + '<StarWebPrintRequest>'
+          + '<PassthroughBinary>' + b64 + '</PassthroughBinary>'
+          + '</StarWebPrintRequest>'
+          + '</StarWebPrint>';
+        var r = await fetch(PRINTER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/xml; charset=UTF-8' },
+          body: xml
+        });
+        if (!r.ok) throw new Error('Imprimante HTTP ' + r.status);
+        var txt = await r.text();
+        if (txt.indexOf('<success>true</success>') === -1 && txt.indexOf('success') === -1) {
+          throw new Error('Imprimante : echec envoi');
+        }
+      }
 
       async function printOrder(o, btn) {
         try {
-          const r = await fetch('/api/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Dash-Key': KEY },
-            body: JSON.stringify({ sessionId: o.sessionId })
-          });
-          const data = await r.json();
-          if (!r.ok) throw new Error(data.error || 'Erreur impression');
-          if (btn) { btn.classList.add('done'); setTimeout(() => btn.classList.remove('done'), 2000); }
+          var ticket = buildTicketBytes(o);
+          // 2 exemplaires
+          var double = new Uint8Array(ticket.length * 2);
+          double.set(ticket, 0);
+          double.set(ticket, ticket.length);
+          await sendToPrinter(double);
+          if (btn) { btn.classList.add('done'); setTimeout(function() { btn.classList.remove('done'); }, 2000); }
           return true;
         } catch (e) {
           console.error('impression :', e);
@@ -751,10 +831,10 @@
       }
 
       /* icone imprimante sur chaque ligne */
-      $('#rows').addEventListener('click', e => {
-        const btn = e.target.closest('.print-btn');
+      $('#rows').addEventListener('click', function(e) {
+        var btn = e.target.closest('.print-btn');
         if (!btn) return;
-        const o = all.find(x => x.sessionId === btn.dataset.sid);
+        var o = all.find(function(x) { return x.sessionId === btn.dataset.sid; });
         if (o) printOrder(o, btn);
       });
 
