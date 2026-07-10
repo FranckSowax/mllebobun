@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bobun Print Agent</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0B0805; color: #F4EDE0; font-family: system-ui, sans-serif; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 20px; min-height: 100vh; }
+    h1 { font-size: 1.4rem; }
+    .status { font-size: .85rem; padding: 8px 18px; border-radius: 999px; border: 1px solid #333; }
+    .status.ok { color: #2ECC71; border-color: rgba(46,204,113,.5); }
+    .status.err { color: #ff9d7a; border-color: rgba(255,157,122,.5); }
+    #log { background: #151009; border: 1px solid #222; border-radius: 12px; padding: 16px; width: min(600px, 90vw); max-height: 50vh; overflow-y: auto; font-family: monospace; font-size: .75rem; line-height: 1.6; }
+    .log-ok { color: #2ECC71; }
+    .log-err { color: #ff9d7a; }
+    .log-info { color: rgba(244,237,224,.5); }
+    input, button { font-family: monospace; font-size: .85rem; padding: 10px 16px; border-radius: 10px; border: 1px solid #333; background: #151009; color: #F4EDE0; }
+    button { cursor: pointer; background: #E8912D; color: #0B0805; font-weight: 700; border: none; }
+    button:hover { opacity: .85; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    label { font-size: .75rem; color: rgba(244,237,224,.5); }
+  </style>
+</head>
+<body>
+  <h1>Bobun Print Agent</h1>
+  <p class="status" id="printer-status">Verification imprimante...</p>
+  <p class="status" id="sse-status">SSE: non connecte</p>
+
+  <div class="row">
+    <label>CLE DASHBOARD</label>
+    <input id="key" type="password" placeholder="cle d'acces" value="">
+    <button id="connect-btn">CONNECTER</button>
+  </div>
+
+  <div class="row">
+    <label>SERVEUR</label>
+    <input id="server" type="text" placeholder="https://mllebobun-production.up.railway.app" value="https://mllebobun-production.up.railway.app" style="width:360px">
+  </div>
+
+  <div class="row">
+    <label>IP IMPRIMANTE</label>
+    <input id="printer-ip" type="text" value="192.168.1.16" style="width:160px">
+    <button id="test-btn">TESTER IMPRIMANTE</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    var logEl = document.getElementById('log');
+    var printerStatus = document.getElementById('printer-status');
+    var sseStatus = document.getElementById('sse-status');
+    var printed = {};
+    var evtSource = null;
+
+    function log(msg, cls) {
+      var d = new Date();
+      var ts = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      logEl.innerHTML += '<div class="' + (cls || 'log-info') + '">' + ts + ' ' + msg + '</div>';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function printerUrl() {
+      return 'http://' + document.getElementById('printer-ip').value + '/StarWebPRNT/SendMessage';
+    }
+
+    function serverUrl() {
+      return document.getElementById('server').value.replace(/\/$/, '');
+    }
+
+    // --- ESC/POS ticket builder ---
+
+    function ascii(s) {
+      return String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u0153\u0152]/g, 'oe').replace(/\u20ac/g, 'EUR')
+        .replace(/[\u00ab\u00bb\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+        .replace(/[^\x20-\x7E\n]/g, '');
+    }
+
+    function line2(left, right, w) {
+      w = w || 32;
+      left = ascii(left); right = ascii(right);
+      var sp = Math.max(1, w - left.length - right.length);
+      return left + ' '.repeat(sp) + right + '\n';
+    }
+
+    function eur(c) { return (c / 100).toFixed(2).replace('.', ',') + ' E'; }
+
+    function buildTicketBytes(o) {
+      var b = [];
+      var ESC = 0x1B, GS = 0x1D;
+      function push() { for (var i = 0; i < arguments.length; i++) b.push(arguments[i]); }
+      function txt(s) { var a = ascii(s); for (var i = 0; i < a.length; i++) push(a.charCodeAt(i)); }
+
+      push(ESC, 0x40);
+      push(ESC, 0x61, 1);
+      push(ESC, 0x45, 1); txt('MADEMOISELLE BOBUN\n'); push(ESC, 0x45, 0);
+      txt('200 bis rue Malbec, Bordeaux\n');
+      txt('--------------------------------\n');
+      push(GS, 0x21, 0x11);
+      txt(o.code + '\n');
+      push(GS, 0x21, 0x00);
+      var d = new Date(o.date);
+      txt(d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '\n');
+      txt('--------------------------------\n');
+      push(ESC, 0x61, 0);
+      (o.items || []).forEach(function(it) {
+        txt(line2(it.qty + ' x ' + it.name, eur(it.amount)));
+      });
+      txt('--------------------------------\n');
+      push(ESC, 0x45, 1);
+      txt(line2('TOTAL', eur(o.amount)));
+      push(ESC, 0x45, 0);
+      if (o.note) {
+        txt('--------------------------------\n');
+        push(ESC, 0x45, 1); txt('NOTE :\n'); push(ESC, 0x45, 0);
+        txt(ascii(o.note) + '\n');
+      }
+      if (o.phone) txt('\nClient : ' + ascii(o.phone) + '\n');
+      push(ESC, 0x61, 1);
+      txt(o.status === 'sur place'
+        ? '\nSUR PLACE - A ENCAISSER\nMerci !\n'
+        : '\nA EMPORTER - PAYEE EN LIGNE\nMerci !\n');
+      push(ESC, 0x64, 4);
+      push(GS, 0x56, 0x42, 0x00);
+      return new Uint8Array(b);
+    }
+
+    function bytesToBase64(bytes) {
+      var bin = '';
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin);
+    }
+
+    // --- StarWebPRNT ---
+
+    function sendToPrinter(bytes) {
+      var b64 = bytesToBase64(bytes);
+      var xml = '<?xml version="1.0" encoding="UTF-8"?>'
+        + '<StarWebPrint xmlns="http://www.star-m.jp">'
+        + '<StarWebPrintRequest>'
+        + '<PassthroughBinary>' + b64 + '</PassthroughBinary>'
+        + '</StarWebPrintRequest>'
+        + '</StarWebPrint>';
+      return fetch(printerUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml; charset=UTF-8' },
+        body: xml
+      }).then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }).then(function(txt) {
+        if (txt.indexOf('success') === -1) throw new Error('echec imprimante');
+      });
+    }
+
+    function printOrder(o) {
+      var ticket = buildTicketBytes(o);
+      // 2 exemplaires
+      var double = new Uint8Array(ticket.length * 2);
+      double.set(ticket, 0);
+      double.set(ticket, ticket.length);
+      return sendToPrinter(double);
+    }
+
+    // --- Test imprimante ---
+
+    function testPrinter() {
+      var b = [];
+      var ESC = 0x1B, GS = 0x1D;
+      b.push(ESC, 0x40, ESC, 0x61, 1, ESC, 0x45, 1);
+      var t = 'TEST IMPRIMANTE OK\n';
+      for (var i = 0; i < t.length; i++) b.push(t.charCodeAt(i));
+      b.push(ESC, 0x45, 0, ESC, 0x64, 3, GS, 0x56, 0x42, 0x00);
+      return sendToPrinter(new Uint8Array(b));
+    }
+
+    document.getElementById('test-btn').addEventListener('click', function() {
+      testPrinter()
+        .then(function() {
+          printerStatus.textContent = 'Imprimante OK';
+          printerStatus.className = 'status ok';
+          log('Test imprimante OK', 'log-ok');
+        })
+        .catch(function(e) {
+          printerStatus.textContent = 'Imprimante erreur : ' + e.message;
+          printerStatus.className = 'status err';
+          log('Test imprimante ECHEC : ' + e.message, 'log-err');
+        });
+    });
+
+    // --- Check printer on load ---
+    testPrinter()
+      .then(function() {
+        printerStatus.textContent = 'Imprimante connectee';
+        printerStatus.className = 'status ok';
+        log('Imprimante Star mC-Print3 detectee', 'log-ok');
+      })
+      .catch(function(e) {
+        printerStatus.textContent = 'Imprimante non joignable';
+        printerStatus.className = 'status err';
+        log('Imprimante non joignable : ' + e.message, 'log-err');
+      });
+
+    // --- SSE connection ---
+
+    function connectSSE() {
+      var key = document.getElementById('key').value.trim();
+      if (!key) { log('Entrez la cle dashboard', 'log-err'); return; }
+      if (evtSource) { evtSource.close(); evtSource = null; }
+
+      localStorage.setItem('bobun_print_key', key);
+      var url = serverUrl() + '/api/orders/stream?key=' + encodeURIComponent(key);
+      log('Connexion SSE : ' + serverUrl() + '...');
+      sseStatus.textContent = 'SSE: connexion...';
+      sseStatus.className = 'status';
+
+      evtSource = new EventSource(url);
+
+      evtSource.onopen = function() {
+        sseStatus.textContent = 'SSE: connecte';
+        sseStatus.className = 'status ok';
+        log('SSE connecte - en attente de commandes', 'log-ok');
+      };
+
+      evtSource.addEventListener('order', function(e) {
+        try {
+          var o = JSON.parse(e.data);
+          if (printed[o.sessionId]) return;
+          printed[o.sessionId] = true;
+          log('Nouvelle commande : ' + o.code + ' (' + (o.items || []).length + ' article(s), ' + eur(o.amount) + ')');
+          printOrder(o)
+            .then(function() { log('Imprime : ' + o.code + ' (x2)', 'log-ok'); })
+            .catch(function(err) { log('Echec impression ' + o.code + ' : ' + err.message, 'log-err'); });
+        } catch (err) {
+          log('Erreur parse commande : ' + err.message, 'log-err');
+        }
+      });
+
+      evtSource.onerror = function() {
+        sseStatus.textContent = 'SSE: deconnecte (reconnexion auto)';
+        sseStatus.className = 'status err';
+        log('SSE deconnecte, reconnexion automatique...', 'log-err');
+      };
+    }
+
+    document.getElementById('connect-btn').addEventListener('click', connectSSE);
+
+    // restore saved key
+    var savedKey = localStorage.getItem('bobun_print_key') || '';
+    if (savedKey) {
+      document.getElementById('key').value = savedKey;
+      connectSSE();
+    }
+  </script>
+</body>
+</html>
