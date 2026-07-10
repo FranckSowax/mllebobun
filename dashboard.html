@@ -728,31 +728,31 @@
          IMPRIMANTE RÉSEAU (Star mC-Print3 via API serveur)
          ============================================================ */
 
-      const btBtn = $(‘#bt-connect’);
+      const btBtn = $('#bt-connect');
       const printed = new Set(); // anti double impression auto
-      let printerOk = true;      // réseau = toujours prête par défaut
+      let printerOk = true;      // reseau = toujours prete par defaut
 
       async function printOrder(o, btn) {
         try {
-          const r = await fetch(‘/api/print’, {
-            method: ‘POST’,
-            headers: { ‘Content-Type’: ‘application/json’, ‘X-Dash-Key’: KEY },
+          const r = await fetch('/api/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Dash-Key': KEY },
             body: JSON.stringify({ sessionId: o.sessionId })
           });
           const data = await r.json();
-          if (!r.ok) throw new Error(data.error || ‘Erreur impression’);
-          if (btn) { btn.classList.add(‘done’); setTimeout(() => btn.classList.remove(‘done’), 2000); }
+          if (!r.ok) throw new Error(data.error || 'Erreur impression');
+          if (btn) { btn.classList.add('done'); setTimeout(() => btn.classList.remove('done'), 2000); }
           return true;
         } catch (e) {
-          console.error(‘impression :’, e);
-          if (btn) alert(‘Erreur impression : ‘ + e.message);
+          console.error('impression :', e);
+          if (btn) alert('Erreur impression : ' + e.message);
           return false;
         }
       }
 
-      /* icône 🖨 sur chaque ligne */
-      $(‘#rows’).addEventListener(‘click’, e => {
-        const btn = e.target.closest(‘.print-btn’);
+      /* icone imprimante sur chaque ligne */
+      $('#rows').addEventListener('click', e => {
+        const btn = e.target.closest('.print-btn');
         if (!btn) return;
         const o = all.find(x => x.sessionId === btn.dataset.sid);
         if (o) printOrder(o, btn);
