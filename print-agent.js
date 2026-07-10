@@ -56,38 +56,78 @@ function line2(left, right, w) {
   return left + ' '.repeat(sp) + right + '\n';
 }
 
-function eur(c) { return (c / 100).toFixed(2).replace('.', ',') + ' E'; }
+function eur(c) { return (c / 100).toFixed(2).replace('.', ',') + '\xee'; }
+function eurFull(c) { return (c / 100).toFixed(2).replace('.', ',') + 'EUR'; }
 
 function buildTicket(order) {
   const ESC = '\x1B';
   const GS = '\x1D';
+  const BOLD = ESC + 'E\x01';
+  const NOBOLD = ESC + 'E\x00';
+  const CENTER = ESC + 'a\x01';
+  const LEFT = ESC + 'a\x00';
+  const BIG = GS + '!\x11';       // double largeur + double hauteur
+  const NORMAL = GS + '!\x00';
+  const CUT = GS + 'V\x41\x03';
   const sep = '--------------------------------\n';
   const d = new Date(order.date);
-  const heure = d.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dateFmt = d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const heureFmt = d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const nbItems = (order.items || []).reduce(function(s, i) { return s + i.qty; }, 0);
 
   let t = '';
-  t += ESC + '\x40';                                // init
-  t += ESC + 'a\x01';                               // centre
-  t += ESC + 'E\x01' + 'MADEMOISELLE BOBUN\n' + ESC + 'E\x00';
-  t += '200 bis rue Malbec, Bordeaux\n';
+  t += ESC + '\x40';                                 // init
+
+  // --- En-tete ---
+  t += CENTER;
+  t += '\n';
+  t += BOLD + 'Mademoiselle Bo Bun\n' + NOBOLD;
+  t += BIG + '#' + ascii(order.code) + '\n' + NORMAL;
   t += sep;
-  t += ESC + '!\x30' + ascii(order.code) + '\n' + ESC + '!\x00';  // double taille
-  t += sep;
-  t += ESC + 'a\x00';                               // gauche
-  for (const i of (order.items || [])) {
-    t += ESC + 'E\x01' + ' ' + i.qty + ' x ' + ESC + 'E\x00' + ascii(i.name) + '  ' + eur(i.amount) + '\n';
+
+  // --- Date / heure ---
+  t += LEFT;
+  t += 'Commande passee: ' + dateFmt + ' ' + heureFmt + '\n';
+  t += '\n';
+
+  // --- Client ---
+  if (order.phone) {
+    t += 'Telephone: ' + ascii(order.phone) + '\n';
   }
-  t += sep;
-  if (order.amount) {
-    t += ESC + 'a\x01' + ESC + 'E\x01' + 'TOTAL : ' + eur(order.amount) + '\n' + ESC + 'E\x00';
+  if (order.email) {
+    t += 'Email: ' + ascii(order.email) + '\n';
   }
+  t += 'Methode de paiement: ' + (order.status === 'sur place' ? 'sur place' : 'carte') + '\n';
+  t += '\n';
+
+  // --- Notes (gras, bien visible) ---
   if (order.note) {
-    t += ESC + 'a\x00' + 'Note : ' + ascii(order.note) + '\n';
+    t += BOLD + 'Notes: ' + ascii(order.note).toUpperCase() + '\n' + NOBOLD;
+    t += '\n';
   }
-  t += ESC + 'a\x01' + heure + '\n';
-  if (order.status) t += ascii(order.status).toUpperCase() + '\n';
+
+  // --- Articles ---
+  t += sep;
+  for (const i of (order.items || [])) {
+    t += line2(i.qty + 'x ' + ascii(i.name), eurFull(i.amount));
+  }
+  t += '\n';
+  t += line2('Nombre de produits:', String(nbItems));
+  t += BOLD + line2('Total:', eurFull(order.amount)) + NOBOLD;
+  t += sep;
+
+  // --- Statut ---
+  t += CENTER;
+  t += '\n';
+  if (order.status === 'sur place') {
+    t += BIG + 'SUR PLACE\n' + NORMAL;
+  } else if (order.driveWanted) {
+    t += BIG + 'DRIVE\n' + NORMAL;
+  } else {
+    t += BIG + 'A EMPORTER\n' + NORMAL;
+  }
   t += '\n\n';
-  t += GS + 'V\x41\x03';                           // coupe partielle
+  t += CUT;
   return Buffer.from(t, 'binary');
 }
 
@@ -174,13 +214,15 @@ function connectSSE() {
           else if (line.startsWith('retry:')) { /* ignore */ }
           else if (line.startsWith(':')) { /* comment / ping */ }
         }
-        if (event === 'order' && data) {
+        if ((event === 'order' || event === 'reprint') && data) {
           try {
             const o = JSON.parse(data);
-            if (printed.has(o.sessionId)) continue;
-            printed.add(o.sessionId);
+            const isReprint = event === 'reprint';
+            if (!isReprint && printed.has(o.sessionId)) continue;
+            if (!isReprint) printed.add(o.sessionId);
             const items = (o.items || []).map(function(i) { return i.qty + 'x ' + i.name; }).join(', ');
-            console.log('[COMMANDE] ' + o.code + ' | ' + items + ' | ' + eur(o.amount));
+            const label = isReprint ? 'RE-IMPRESSION' : 'COMMANDE';
+            console.log('[' + label + '] ' + o.code + ' | ' + items + ' | ' + eur(o.amount));
             printTicket(o, 2)
               .then(function() { console.log('[IMPRIME] ' + o.code + ' (x2 tickets)\n'); })
               .catch(function(e) { console.error('[ERREUR]  Impression ' + o.code + ' : ' + e.message + '\n'); });

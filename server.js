@@ -245,46 +245,57 @@ function appendLine(obj) {
 
 /* ---------- Impression ticket (Star mC-Print3 ESC/POS) ---------- */
 
-function buildTicketBuffer(order) {
-  const ESC = '\x1B';
-  const GS = '\x1D';
-  const INIT = ESC + '\x40';
-  const CENTER = ESC + 'a\x01';
-  const LEFT = ESC + 'a\x00';
-  const BOLD_ON = ESC + 'E\x01';
-  const BOLD_OFF = ESC + 'E\x00';
-  const DOUBLE = ESC + '!\x30';   // double largeur + double hauteur
-  const NORMAL = ESC + '!\x00';
-  const CUT = GS + 'V\x41\x03'; // coupe partielle avec avance
+function ticketAscii(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u0153\u0152]/g, 'oe').replace(/\u20ac/g, 'EUR')
+    .replace(/[\u00ab\u00bb\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^\x20-\x7E\n]/g, '');
+}
+function ticketLine2(left, right, w = 32) {
+  left = ticketAscii(left); right = ticketAscii(right);
+  return left + ' '.repeat(Math.max(1, w - left.length - right.length)) + right + '\n';
+}
+function eurFmt(c) { return (c / 100).toFixed(2).replace('.', ',') + 'EUR'; }
 
+function buildTicketBuffer(order) {
+  const ESC = '\x1B', GS = '\x1D';
+  const BOLD = ESC + 'E\x01', NOBOLD = ESC + 'E\x00';
+  const CENTER = ESC + 'a\x01', LEFT = ESC + 'a\x00';
+  const BIG = GS + '!\x11', NORMAL = GS + '!\x00';
+  const CUT = GS + 'V\x41\x03';
   const sep = '--------------------------------\n';
   const d = new Date(order.date);
-  const heure = d.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dateFmt = d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const heureFmt = d.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const nbItems = (order.items || []).reduce((s, i) => s + i.qty, 0);
 
-  let t = '';
-  t += INIT;
-  t += CENTER;
-  t += BOLD_ON + 'MADEMOISELLE BOBUN\n' + BOLD_OFF;
-  t += '200 bis rue Malbec, Bordeaux\n';
-  t += sep;
-  t += DOUBLE + order.code + '\n' + NORMAL;
+  let t = ESC + '\x40';   // init
+  t += CENTER + '\n';
+  t += BOLD + 'Mademoiselle Bo Bun\n' + NOBOLD;
+  t += BIG + '#' + ticketAscii(order.code) + '\n' + NORMAL;
   t += sep;
   t += LEFT;
-  for (const i of order.items) {
-    const prix = typeof i.amount === 'number' ? '  ' + (i.amount / 100).toFixed(2).replace('.', ',') + ' E' : '';
-    t += BOLD_ON + ' ' + i.qty + ' x ' + BOLD_OFF + i.name + prix + '\n';
+  t += 'Commande passee: ' + dateFmt + ' ' + heureFmt + '\n\n';
+  if (order.phone) t += 'Telephone: ' + ticketAscii(order.phone) + '\n';
+  if (order.email) t += 'Email: ' + ticketAscii(order.email) + '\n';
+  t += 'Methode de paiement: ' + (order.status === 'sur place' ? 'sur place' : 'carte') + '\n\n';
+  if (order.note) {
+    t += BOLD + 'Notes: ' + ticketAscii(order.note).toUpperCase() + '\n' + NOBOLD + '\n';
   }
   t += sep;
-  if (order.amount) {
-    t += CENTER + BOLD_ON + 'TOTAL : ' + (order.amount / 100).toFixed(2).replace('.', ',') + ' EUR\n' + BOLD_OFF;
+  for (const i of (order.items || [])) {
+    t += ticketLine2(i.qty + 'x ' + ticketAscii(i.name), eurFmt(i.amount));
   }
-  if (order.note) {
-    t += LEFT + 'Note : ' + order.note + '\n';
-  }
-  t += CENTER + heure + '\n';
-  t += order.status ? order.status.toUpperCase() + '\n' : '';
-  t += '\n\n';
-  t += CUT;
+  t += '\n';
+  t += ticketLine2('Nombre de produits:', String(nbItems));
+  t += BOLD + ticketLine2('Total:', eurFmt(order.amount)) + NOBOLD;
+  t += sep;
+  t += CENTER + '\n';
+  if (order.status === 'sur place') t += BIG + 'SUR PLACE\n' + NORMAL;
+  else if (order.driveWanted) t += BIG + 'DRIVE\n' + NORMAL;
+  else t += BIG + 'A EMPORTER\n' + NORMAL;
+  t += '\n\n' + CUT;
   return Buffer.from(t, 'binary');
 }
 
@@ -1066,19 +1077,14 @@ app.post('/api/settings', checkKey, (req, res) => {
   res.json(settings);
 });
 
-/* impression ticket via réseau (Star mC-Print3) depuis le dashboard */
+/* impression ticket : broadcast SSE "reprint" pour le print-agent local */
 app.post('/api/print', checkKey, (req, res) => {
   const { sessionId } = req.body || {};
   const order = orders.find(o => o.sessionId === sessionId);
   if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-  if (!PRINTER_IP) return res.status(503).json({ error: 'Imprimante non configurée (PRINTER_IP)' });
-  try {
-    printTicket(order, 2);
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('api print:', e.message);
-    res.status(500).json({ error: e.message });
-  }
+  // broadcast pour que le print-agent local imprime
+  broadcast('reprint', order);
+  res.json({ ok: true });
 });
 
 /* catalogue pour la prise de commande sur place (piloté par le menu) */
