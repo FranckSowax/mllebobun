@@ -1097,8 +1097,9 @@ app.get('/api/catalog', checkKey, (req, res) => {
   });
 });
 
-/* menu public (pour synchroniser les prix affichés sur le site) */
+/* menu public (pour synchroniser les prix affichés sur le site, y compris hors domaine) */
 app.get('/api/menu/public', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
   const cat = effectiveCatalog();
   res.json({
     items: Object.values(cat).map(c => ({

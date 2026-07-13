@@ -580,7 +580,8 @@ body.flat .hero-scrollhint { display: none; }
   background: #000;
 }
 
-.choix-media video {
+.choix-media video,
+.choix-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
