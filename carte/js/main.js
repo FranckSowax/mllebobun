@@ -76,7 +76,7 @@
                      srcset="assets/plats/${it.id}@sm.webp 320w, assets/plats/${it.id}.webp 640w"
                      sizes="(max-width:820px) 78vw, 24vw"
                      alt="${it.nom}" width="640" height="640"
-                     ${ci === 0 && ii < 3 ? 'fetchpriority="high"' : 'loading="lazy"'}>
+                     loading="lazy">
               </div>
               <h3>${it.nom}</h3>
               <p class="card-prix">${it.prix}</p>
