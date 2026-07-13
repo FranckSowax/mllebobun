@@ -24,6 +24,7 @@ const path = require('path');
 const crypto = require('crypto');
 const net = require('net');
 const express = require('express');
+const compression = require('compression');
 const Stripe = require('stripe');
 const QRCode = require('qrcode');
 const { createClient } = require('@supabase/supabase-js');
@@ -459,6 +460,8 @@ async function sendTeamWhatsApp(order) {
 /* ---------- App ---------- */
 
 const app = express();
+// gzip des réponses (HTML/CSS/JS/JSON) — jamais le flux SSE (il doit rester non bufferisé)
+app.use(compression({ filter: (req, res) => !req.path.includes('/stream') && compression.filter(req, res) }));
 app.set('trust proxy', 1);
 
 /* CORS pour le Print Agent local (file:// ou autre origine) */

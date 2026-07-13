@@ -64,17 +64,13 @@ img { display: block; max-width: 100%; height: auto; }
 
 #fx { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
 
+/* grain statique : l'animation steps() d'un calque plein écran est
+   comptée en layout shift par Chrome (CLS 1.0) et coûte du paint */
 #grain {
-  position: fixed; inset: -50%;
+  position: fixed; inset: 0;
   z-index: 32; pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: .06;
-  animation: grain 8s steps(10) infinite;
-}
-@keyframes grain {
-  0%,100% { transform: translate(0,0); } 10% { transform: translate(-5%,-8%); }
-  30% { transform: translate(3%,-5%); } 50% { transform: translate(-8%,4%); }
-  70% { transform: translate(6%,8%); } 90% { transform: translate(-3%,3%); }
 }
 
 #vignette {
@@ -494,7 +490,7 @@ img { display: block; max-width: 100%; height: auto; }
 
   </style>
   <link rel="preload" as="image"
-        imagesrcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
+        imagesrcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, /carte/assets/plats/bobun-boeuf.webp 640w"
         imagesizes="(max-width: 820px) 78vw, 46vh">
   <script type="application/ld+json">
   {
@@ -556,7 +552,7 @@ img { display: block; max-width: 100%; height: auto; }
     <div class="hero-bowl" aria-hidden="true">
       <span class="hero-halo"></span>
       <img src="/carte/assets/plats/bobun-boeuf.webp"
-           srcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
+           srcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, /carte/assets/plats/bobun-boeuf.webp 640w"
            sizes="(max-width: 820px) 78vw, 46vh"
            alt="" width="640" height="640" fetchpriority="high">
     </div>
