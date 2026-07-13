@@ -1,7 +1,7 @@
 .playwright-mcp/
 .DS_Store
 node_modules/
-data/
+/data/
 .agents/
 .claude/
 skills-lock.json
