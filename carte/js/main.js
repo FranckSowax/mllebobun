@@ -10,20 +10,31 @@
   const MOBILE = matchMedia('(max-width: 820px)').matches;
   const $ = s => document.querySelector(s);
 
-  /* ---------- données (prix synchronisés sur le dashboard) ---------- */
+  /* ---------- données ---------- */
+  // en prod le menu est inliné dans le HTML (zéro requête avant la 1re peinture) ;
+  // en dev on retombe sur le fichier.
+  const inline = document.getElementById('menu-data');
+  const menu = inline ? JSON.parse(inline.textContent)
+    : await fetch('/carte/data/menu.json').then(r => r.json());
 
-  const menu = await fetch('/carte/data/menu.json').then(r => r.json());
-  try {
-    const pub = await fetch('https://www.mademoisellebobun.com/api/menu/public',
-      { signal: AbortSignal.timeout(3500) }).then(r => r.json());
-    const live = {};
-    (pub.items || []).forEach(m => { live[m.id] = m.amount; });
-    menu.items.forEach(it => {
-      if (it.sync && live[it.sync] != null) {
-        it.prix = (live[it.sync] / 100).toFixed(2).replace('.', ',') + ' €';
-      }
-    });
-  } catch (e) { /* prix embarqués conservés */ }
+  // synchro des prix sur le dashboard, en différé : ne retarde jamais le rendu
+  function syncPrices() {
+    fetch('https://www.mademoisellebobun.com/api/menu/public', { signal: AbortSignal.timeout(3500) })
+      .then(r => r.json())
+      .then(pub => {
+        const live = {};
+        (pub.items || []).forEach(m => { live[m.id] = m.amount; });
+        menu.items.forEach(it => {
+          if (it.sync && live[it.sync] != null) {
+            const prix = (live[it.sync] / 100).toFixed(2).replace('.', ',') + ' €';
+            it.prix = prix;
+            const el = document.querySelector(`.card[data-id="${it.id}"] .card-prix`);
+            if (el) el.textContent = prix;
+          }
+        });
+      })
+      .catch(() => { /* prix embarqués conservés */ });
+  }
 
   /* ---------- badge OUVERT / FERMÉ (Europe/Paris) ---------- */
 
@@ -109,6 +120,8 @@
 
   const seq = `<span>CLICK'N'COLLECT</span><span>·</span><span><em>WHATSAPP</em></span><span>·</span><span>DELIVEROO</span><span>·</span><span>UBER EATS</span><span>·</span>`;
   $('#marquee-track').innerHTML = seq + seq;
+
+  syncPrices(); // après la construction du DOM — met à jour les prix en place
 
   /* ---------- état partagé (un seul rAF pour tout) ---------- */
 
