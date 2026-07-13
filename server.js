@@ -1221,8 +1221,10 @@ app.get('/api/orders/stream', checkKey, (req, res) => {
 
 /* ---------- Pages ---------- */
 
-// LE COMPTOIR (un plat = un écran) est la page d'accueil
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'comptoir', 'index.html')));
+// LA CARTE (rails horizontaux, 24 plats) est la page d'accueil
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'carte', 'index.html')));
+// LE COMPTOIR (un plat = un écran) reste accessible sur /comptoir
+app.get('/comptoir', (req, res) => res.sendFile(path.join(__dirname, 'comptoir', 'index.html')));
 // l'ancien film « la descente du bol » reste accessible sur /film
 app.get('/film', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/film/', (req, res) => res.redirect(301, '/film'));

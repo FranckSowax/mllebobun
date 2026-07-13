@@ -12,7 +12,7 @@
 
   /* ---------- données (prix synchronisés sur le dashboard) ---------- */
 
-  const menu = await fetch('data/menu.json').then(r => r.json());
+  const menu = await fetch('/carte/data/menu.json').then(r => r.json());
   try {
     const pub = await fetch('https://www.mademoisellebobun.com/api/menu/public',
       { signal: AbortSignal.timeout(3500) }).then(r => r.json());
@@ -72,8 +72,8 @@
           ${items.map((it, ii) => `
             <article class="card" role="listitem" data-id="${it.id}">
               <div class="card-media ${it.shape}">
-                <img src="assets/plats/${it.id}.webp"
-                     srcset="assets/plats/${it.id}@sm.webp 320w, assets/plats/${it.id}.webp 640w"
+                <img src="/carte/assets/plats/${it.id}.webp"
+                     srcset="/carte/assets/plats/${it.id}@sm.webp 320w, assets/plats/${it.id}.webp 640w"
                      sizes="(max-width:820px) 78vw, 24vw"
                      alt="${it.nom}" width="640" height="640"
                      loading="lazy">

@@ -10,13 +10,491 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="/assets/plats/bobun-boeuf.webp">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;900&family=IBM+Plex+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;900&family=IBM+Plex+Mono:wght@400;500&display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="preload" as="font" type="font/woff2" href="/carte/assets/fonts/bvp-900-latin.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/carte/assets/fonts/mono-400-latin.woff2" crossorigin>
+  <style>
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:300;font-display:swap;src:url(/carte/assets/fonts/bvp-300-vietnamese.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:300;font-display:swap;src:url(/carte/assets/fonts/bvp-300-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:400;font-display:swap;src:url(/carte/assets/fonts/bvp-400-vietnamese.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:400;font-display:swap;src:url(/carte/assets/fonts/bvp-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:900;font-display:swap;src:url(/carte/assets/fonts/bvp-900-vietnamese.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}
+@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:900;font-display:swap;src:url(/carte/assets/fonts/bvp-900-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(/carte/assets/fonts/mono-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(/carte/assets/fonts/mono-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+
+/* ============================================================
+   MADEMOISELLE BOBÙN — la carte en rails horizontaux
+   noir wok #0B0805 · ivoire #F4EDE0 · 5 accents de catégorie
+   ============================================================ */
+
+:root {
+  --noir: #0B0805;
+  --noir2: #16100A;
+  --ivoire: #F4EDE0;
+  --caramel: #E8912D;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Be Vietnam Pro', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { background: var(--noir); }
+
+body {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, #1a1208 0%, transparent 60%),
+    var(--noir);
+  color: var(--ivoire);
+  font-family: var(--sans);
+  overflow-x: hidden;
+}
+
+a { color: inherit; }
+img { display: block; max-width: 100%; height: auto; }
+:focus-visible { outline: 2px solid var(--caramel); outline-offset: 4px; border-radius: 8px; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: .64rem;
+  letter-spacing: .22em;
+  color: var(--caramel);
+}
+
+/* ---------- calques cinéma ---------- */
+
+#fx { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+
+#grain {
+  position: fixed; inset: -50%;
+  z-index: 32; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .06;
+  animation: grain 8s steps(10) infinite;
+}
+@keyframes grain {
+  0%,100% { transform: translate(0,0); } 10% { transform: translate(-5%,-8%); }
+  30% { transform: translate(3%,-5%); } 50% { transform: translate(-8%,4%); }
+  70% { transform: translate(6%,8%); } 90% { transform: translate(-3%,3%); }
+}
+
+#vignette {
+  position: fixed; inset: 0; z-index: 31; pointer-events: none;
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, rgba(4,2,0,.55) 100%);
+}
+
+#tint {
+  position: fixed; inset: 0; z-index: 29; pointer-events: none;
+  background: #E8912D;
+  mix-blend-mode: soft-light;
+  opacity: .3;
+  transition: none;
+}
+
+/* ---------- HERO ---------- */
+
+#hero {
+  min-height: 120vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12vh 5vw 0;
+  position: relative;
+}
+
+#hero h1 {
+  font-weight: 900;
+  font-size: clamp(3rem, 10vw, 8rem);
+  line-height: .96;
+  letter-spacing: -.02em;
+  margin: 18px 0 14px;
+}
+
+.hero-sub {
+  font-weight: 300;
+  font-size: clamp(.95rem, 1.6vw, 1.15rem);
+  color: rgba(244, 237, 224, .75);
+}
+
+.hero-badge {
+  display: inline-block;
+  margin-top: 22px;
+  font-family: var(--mono);
+  font-size: .62rem;
+  letter-spacing: .18em;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 237, 224, .25);
+}
+.hero-badge.open { color: #86E29B; border-color: rgba(134, 226, 155, .5); }
+.hero-badge.closed { color: #ff9d7a; border-color: rgba(255, 157, 122, .45); }
+
+.hero-bowl {
+  position: relative;
+  width: min(46vh, 74vw);
+  margin: 6vh auto 0;
+}
+.hero-bowl img {
+  width: 100%;
+  border-radius: 50%;
+  animation: bowlspin 20s linear infinite;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, .65);
+}
+@keyframes bowlspin { to { transform: rotate(8deg); } }
+
+.hero-halo {
+  position: absolute; inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61, 139, 255, .28) 0%, rgba(61, 139, 255, .07) 45%, transparent 70%);
+  animation: halo 3.4s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes halo { 50% { transform: scale(1.12); opacity: .65; } }
+
+.hero-cue {
+  position: absolute;
+  bottom: 5vh; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: .56rem;
+  letter-spacing: .26em;
+  color: rgba(244, 237, 224, .5);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.cue-line {
+  width: 1px; height: 54px;
+  background: linear-gradient(to bottom, var(--caramel), transparent);
+  animation: cue 1.8s ease-in-out infinite;
+}
+@keyframes cue { 50% { transform: scaleY(.55); opacity: .5; } }
+
+/* ---------- RAILS ---------- */
+
+.rail { position: relative; }
+
+.rail-pin {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+/* titre géant en contre-défilement */
+.rail-title {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  font-weight: 900;
+  font-size: clamp(3rem, 9vw, 7rem);
+  letter-spacing: .01em;
+  white-space: nowrap;
+  color: var(--acc, var(--caramel));
+  opacity: .12;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.rail-head {
+  padding: 0 6vw;
+  margin-bottom: 3.4vh;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.rail-head .eyebrow { color: var(--acc, var(--caramel)); }
+.rail-head h2 {
+  font-weight: 900;
+  font-size: clamp(1.2rem, 2.4vw, 1.9rem);
+}
+
+.rail-track {
+  display: flex;
+  gap: clamp(18px, 2.6vw, 34px);
+  padding: 0 6vw;
+  will-change: transform;
+  width: max-content;
+}
+
+/* ---------- cards ---------- */
+
+.card {
+  position: relative;
+  width: clamp(300px, 24vw, 380px);
+  flex: none;
+  background: linear-gradient(180deg, rgba(244, 237, 224, .045) 0%, rgba(244, 237, 224, .015) 100%);
+  border: 1px solid rgba(244, 237, 224, .1);
+  border-radius: 24px;
+  padding: clamp(18px, 1.8vw, 26px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform-origin: center center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+}
+
+/* ombre renforcée continue (pilotée par --sh au fil du scrub) */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  box-shadow: 0 36px 85px rgba(0, 0, 0, .6);
+  opacity: var(--sh, 0);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.card-media {
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.card-media.round { border-radius: 50%; }
+.card-media.square { border-radius: 22px; }
+.card-media img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  will-change: transform;
+}
+
+.card h3 {
+  font-weight: 900;
+  font-size: 1.14rem;
+  line-height: 1.15;
+}
+
+.card-prix {
+  font-family: var(--mono);
+  font-size: .88rem;
+  color: var(--acc, var(--caramel));
+  font-variant-numeric: tabular-nums;
+}
+
+.card-desc {
+  font-weight: 300;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: rgba(244, 237, 224, .7);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.card-cta {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: .62rem;
+  letter-spacing: .16em;
+  text-decoration: none;
+  background: var(--acc, var(--caramel));
+  color: var(--noir);
+  padding: 12px 22px;
+  border-radius: 999px;
+  transition: filter .2s, transform .2s;
+}
+.card-cta:hover { filter: brightness(1.12); transform: translateY(-2px); }
+
+/* ---------- pied de rail : progression + compteur ---------- */
+
+.rail-foot {
+  position: absolute;
+  left: 6vw; right: 6vw; bottom: 4.6vh;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.rail-progress {
+  flex: 1;
+  height: 2px;
+  background: rgba(244, 237, 224, .12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rail-progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--acc, var(--caramel));
+}
+.rail-count {
+  font-family: var(--mono);
+  font-size: .62rem;
+  letter-spacing: .18em;
+  color: rgba(244, 237, 224, .55);
+  min-width: 64px;
+  text-align: right;
+}
+
+/* ---------- bandes de transition ---------- */
+
+.band {
+  height: 30vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.band svg { width: min(560px, 74vw); height: 60px; overflow: visible; }
+.band path {
+  fill: none;
+  stroke: var(--band-acc, var(--caramel));
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: .5;
+}
+
+/* ---------- FOOTER ---------- */
+
+#footer {
+  padding: 10vh 0 6vh;
+  text-align: center;
+  position: relative;
+}
+
+.marquee { overflow: hidden; margin-bottom: 6vh; }
+.marquee-track {
+  display: inline-flex;
+  gap: 3.2rem;
+  white-space: nowrap;
+  font-weight: 900;
+  font-size: clamp(1.4rem, 3.6vw, 2.6rem);
+  color: rgba(244, 237, 224, .22);
+  animation: marquee 24s linear infinite;
+}
+.marquee-track span { display: inline-block; }
+.marquee-track em { font-style: normal; color: var(--caramel); }
+@keyframes marquee { to { transform: translateX(-50%); } }
+
+.foot-links {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 7vh;
+}
+
+.btn-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 15px 30px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: transform .2s, filter .2s;
+}
+.btn-brand:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.btn-wa { background: #25D366; color: #06130a; }
+.btn-uber { background: #06C167; color: #06130a; }
+.btn-uber .eats { font-weight: 900; }
+.btn-deliveroo { background: #00CCBC; color: #06130a; font-style: italic; font-weight: 900; }
+
+.ticket {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: .64rem;
+  letter-spacing: .12em;
+  line-height: 2.3;
+  color: rgba(244, 237, 224, .72);
+  background: rgba(244, 237, 224, .03);
+  border: 1px solid rgba(244, 237, 224, .1);
+  border-radius: 10px;
+  padding: 22px 34px;
+  text-align: center;
+}
+.ticket-line { color: rgba(244, 237, 224, .25); }
+.ticket a { text-decoration: none; }
+
+.foot-base {
+  margin-top: 6vh;
+  font-family: var(--mono);
+  font-size: .56rem;
+  letter-spacing: .22em;
+  color: rgba(244, 237, 224, .35);
+}
+
+/* ============================================================
+   MOBILE ≤ 820px — carrousels natifs, pas de scroll-jacking
+   ============================================================ */
+
+@media (max-width: 820px) {
+  #hero { min-height: 100svh; padding-top: 14vh; }
+  .hero-bowl { width: min(38vh, 78vw); }
+
+  .rail-pin {
+    height: auto;
+    padding: 9vh 0 7vh;
+    overflow: visible;
+    justify-content: flex-start;
+  }
+
+  .rail-title {
+    top: 2vh;
+    transform: none;
+    font-size: clamp(2.4rem, 13vw, 4rem);
+  }
+
+  .rail-head { margin-top: 7vh; }
+
+  .rail-track {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    width: auto;
+    padding: 3vh 11vw 3vh;
+    scrollbar-width: none;
+  }
+  .rail-track::-webkit-scrollbar { display: none; }
+
+  .card {
+    width: 78vw;
+    scroll-snap-align: center;
+    transition: transform .45s cubic-bezier(.22, .8, .3, 1), box-shadow .45s, filter .45s;
+    transform: scale(.94);
+    filter: saturate(.85);
+  }
+  .card.is-center {
+    transform: scale(1.02);
+    filter: none;
+    box-shadow: 0 26px 60px rgba(0, 0, 0, .55);
+  }
+
+  .card-cta { align-self: stretch; text-align: center; }
+
+  .rail-foot {
+    position: static;
+    margin-top: 2.4vh;
+    padding: 0 6vw;
+  }
+
+  .band { height: 18vh; }
+}
+
+/* ============================================================
+   REDUCED MOTION — carrousels simples, effets coupés
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-bowl img, .hero-halo, .cue-line, #grain, .marquee-track { animation: none; }
+  .card { transition: box-shadow .2s !important; transform: none !important; filter: none !important; }
+  .rail-pin { height: auto; padding: 8vh 0; overflow: visible; }
+  .rail-track { overflow-x: auto; scroll-snap-type: x proximity; width: auto; }
+  #fx { display: none; }
+}
+
+  </style>
   <link rel="preload" as="image"
-        imagesrcset="assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
+        imagesrcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
         imagesizes="(max-width: 820px) 78vw, 46vh">
   <script type="application/ld+json">
   {
@@ -77,8 +555,8 @@
     </div>
     <div class="hero-bowl" aria-hidden="true">
       <span class="hero-halo"></span>
-      <img src="assets/plats/bobun-boeuf.webp"
-           srcset="assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
+      <img src="/carte/assets/plats/bobun-boeuf.webp"
+           srcset="/carte/assets/plats/bobun-boeuf@sm.webp 320w, assets/plats/bobun-boeuf.webp 640w"
            sizes="(max-width: 820px) 78vw, 46vh"
            alt="" width="640" height="640" fetchpriority="high">
     </div>
@@ -118,6 +596,6 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
-  <script src="js/main.js" defer></script>
+  <script src="/carte/js/main.js" defer></script>
 </body>
 </html>
