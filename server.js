@@ -733,19 +733,21 @@ function railToStore(railId) {
 const pendingCart = new Map();
 
 // paiement du TOTAL d'un panier WhatsApp (on n'a pas le détail des plats, seulement le montant)
-async function createCartCheckout(from, cents, count, mode) {
+async function createCartCheckout(from, cents, count, mode, upsellNems) {
   if (!stripe) return null;
   const drive = mode === 'drive';
   const code = pickupCode();
+  const line_items = [{ quantity: 1, price_data: { currency: 'eur', unit_amount: cents, product_data: { name: `Commande WhatsApp — ${count} article${count > 1 ? 's' : ''}` } } }];
+  if (upsellNems) line_items.push({ quantity: 1, price_data: { currency: 'eur', unit_amount: 300, product_data: { name: 'Supplément 2 nems' } } });
+  const note = 'Panier WhatsApp — détail visible dans l’app WhatsApp Business' + (upsellNems ? ' · + 2 nems' : '');
   const session = await stripe.checkout.sessions.create({
-    mode: 'payment', locale: 'fr', submit_type: 'pay',
-    line_items: [{ quantity: 1, price_data: { currency: 'eur', unit_amount: cents, product_data: { name: `Commande WhatsApp — ${count} article${count > 1 ? 's' : ''}` } } }],
-    metadata: { source: drive ? 'whatsapp — Drive' : 'whatsapp — à emporter', note: '—', code, wa: from, mode: drive ? 'drive' : 'emporter' },
+    mode: 'payment', locale: 'fr', submit_type: 'pay', line_items,
+    metadata: { source: drive ? 'whatsapp — Drive' : 'whatsapp — à emporter', note, code, wa: from, mode: drive ? 'drive' : 'emporter' },
     payment_intent_data: { description: `Commande ${drive ? 'Drive' : 'à emporter'} ${code} — Mademoiselle Bobùn (WhatsApp)` },
     success_url: `${SITE()}/merci.html?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${SITE()}/`
   });
-  return { url: session.url, code };
+  return { url: session.url, code, total: cents + (upsellNems ? 300 : 0) };
 }
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
@@ -954,50 +956,73 @@ async function handleWhapiBody(body) {
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
     const now = Date.now();
 
-    // 0bis) CHOIX DU MODE pour un panier WhatsApp -> paiement Stripe du total
+    // 0bis) Étapes d'un panier WhatsApp : mode de retrait -> upsell -> paiement Stripe
     // (Whapi renvoie parfois l'id du bouton comme "ButtonsV3:0/1" -> on détecte aussi par titre/index)
     if (pendingCart.has(from) && (btn || text)) {
-      const bid = String((btn && btn.id) || '');
-      const btxt = String((btn && btn.title) || text || '').toLowerCase();
-      let mode = null;
-      if (/cart_drive|drive|voiture|gar[ée]/.test(bid + ' ' + btxt) || bid.endsWith(':1')) mode = 'drive';
-      else if (/cart_emporter|emporter/.test(bid + ' ' + btxt) || bid.endsWith(':0')) mode = 'emporter';
-      if (mode) {
       const pc = pendingCart.get(from);
-      if (!pc || pc.at < now - 45 * 60 * 1000) {
+      const bid = String((btn && btn.id) || '');
+      const bt = String((btn && btn.title) || text || '').toLowerCase();
+      if (pc.at < now - 45 * 60 * 1000) {
         pendingCart.delete(from);
         await whapi('/messages/text', { to: from, body: 'Votre panier a expiré — renvoyez-le depuis le catalogue, ou dites-moi vos plats et je vous fais un lien 🙌' }).catch(() => {});
         continue;
       }
-      pendingCart.delete(from);
-      const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
-      // message d'attente immédiat (la création de session + l'envoi Whapi prennent quelques secondes)
-      await whapi('/messages/text', { to: from, body: '⏳ Je prépare votre paiement sécurisé, un petit instant…' }).catch(() => {});
-      try {
-        const co = await createCartCheckout(from, pc.cents, pc.count, mode);
-        if (co && co.url) {
-          const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})\n`
-            + `Paiement sécurisé Stripe · vous recevrez votre code de retrait ici même 🙌`
-            + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule.' : '');
+
+      // Étape 1 : mode de retrait -> propose l'upsell
+      if (!pc.mode) {
+        const mode = (/drive|voiture|gar[ée]/.test(bid + ' ' + bt) || bid.endsWith(':1')) ? 'drive'
+          : (/emporter/.test(bid + ' ' + bt) || bid.endsWith(':0')) ? 'emporter' : null;
+        if (mode) {
+          pc.mode = mode; pc.at = now;
+          const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
           try {
-            // lien de paiement sous un bouton (URL) — évite l'URL brute tronquée par WhatsApp
             await whapi('/messages/interactive', {
               to: from, type: 'button',
-              body: { text: body },
-              footer: { text: 'Mademoiselle Bobùn' },
-              action: { buttons: [{ type: 'url', title: `💳 Payer ${eurTxt} €`, id: 'pay', url: co.url }] }
+              body: { text: '🥟 Un petit plus ? Nos *nems maison* sont notre best-seller — on en ajoute 2 pour *+3 €* ?' },
+              action: { buttons: [
+                { type: 'quick_reply', title: '🥟 Oui, +2 nems', id: 'up_nems' },
+                { type: 'quick_reply', title: `💳 Payer ${eurTxt} €`, id: 'up_pay' }
+              ] }
             });
-          } catch (e2) {
-            await whapi('/messages/text', { to: from, body: `${body}\n👉 ${co.url}` }).catch(() => {});
+          } catch (e) {
+            await whapi('/messages/text', { to: from, body: 'Un petit plus ? Répondez « nems » pour ajouter 2 nems (+3 €), ou « payer » pour continuer.' }).catch(() => {});
           }
-        } else {
+          continue;
+        }
+        // input non reconnu -> laisse le concierge répondre (le panier reste en attente)
+      }
+
+      // Étape 2 : réponse à l'upsell -> paiement du total
+      else if (btn || /nems|payer|oui|non/.test(bt)) {
+        const addNems = /nems|oui/.test(bid + ' ' + bt) || bid.endsWith(':0');
+        const mode = pc.mode;
+        pendingCart.delete(from);
+        await whapi('/messages/text', { to: from, body: '⏳ Je prépare votre paiement sécurisé, un petit instant…' }).catch(() => {});
+        try {
+          const co = await createCartCheckout(from, pc.cents, pc.count, mode, addNems);
+          if (co && co.url) {
+            const eurTxt = (co.total / 100).toFixed(2).replace('.', ',');
+            const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})${addNems ? ' · +2 nems' : ''}\n`
+              + `Paiement sécurisé Stripe · vous recevrez votre code de retrait ici même 🙌`
+              + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule.' : '');
+            try {
+              await whapi('/messages/interactive', {
+                to: from, type: 'button',
+                body: { text: body },
+                footer: { text: 'Mademoiselle Bobùn' },
+                action: { buttons: [{ type: 'url', title: `💳 Payer ${eurTxt} €`, id: 'pay', url: co.url }] }
+              });
+            } catch (e2) {
+              await whapi('/messages/text', { to: from, body: `${body}\n👉 ${co.url}` }).catch(() => {});
+            }
+          } else {
+            await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
+          }
+        } catch (e) {
+          console.error('cart checkout:', e.message);
           await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
         }
-      } catch (e) {
-        console.error('cart checkout:', e.message);
-        await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
-      }
-      continue;
+        continue;
       }
     }
 
