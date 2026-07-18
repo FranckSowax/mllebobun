@@ -733,8 +733,9 @@ const WID_INFO = {
 async function whapiGetOrderItems(orderId, token) {
   if (!WHAPI_TOKEN || !orderId || !token) return null;
   try {
-    const url = `${WHAPI_API_URL}/business/orders/${encodeURIComponent(orderId)}?token=${encodeURIComponent(token)}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${WHAPI_TOKEN}` }, signal: AbortSignal.timeout(15000) });
+    // doc Whapi : order_token = token du panier (webhook), token = token du canal — TOUS DEUX en query
+    const url = `${WHAPI_API_URL}/business/orders/${encodeURIComponent(orderId)}?order_token=${encodeURIComponent(token)}&token=${encodeURIComponent(WHAPI_TOKEN)}`;
+    const res = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
     const txt = await res.text();
     if (!res.ok) { console.error('getOrderItems', res.status, txt.slice(0, 150)); return null; }
     let j = {}; try { j = JSON.parse(txt); } catch (e) { return null; }
