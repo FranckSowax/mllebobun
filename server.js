@@ -709,6 +709,25 @@ app.post('/api/drive', async (req, res) => {
 const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
 // lien profond : ouvre la page de commande avec le plat déjà dans le panier (prêt à payer)
 function orderUrl(dish) { return SITE() + dishPage(dish ? dish.cat : '') + (dish && dish.id ? '?add=' + encodeURIComponent(dish.id) : ''); }
+
+// panier natif WhatsApp : id-produit WhatsApp (Whapi) -> id-plat du catalogue (rails)
+const WID_TO_DISH = {
+  '26596403743369956': 'bobun-boeuf', '27811222148508441': 'bobun-poulet', '27718442327840355': 'bobun-crevette', '27630855043244372': 'bobun-veggie',
+  '28223213057262715': 'loclac-boeuf', '28076505905317920': 'loclac-poulet', '27770553009241995': 'loclac-veggie', '27293247087043409': 'riz-cantonnais',
+  '36995525706729631': 'padthai-poulet', '27223951510638005': 'padthai-boeuf', '27788218260775045': 'padthai-crevette', '28863302836593573': 'mi-xao',
+  '27902920422680039': 'nems', '27746997494931796': 'samoussa', '27870549665940779': 'raviolis-crevettes', '27980594338296747': 'goicuon-crevette',
+  '27465779216422697': 'goicuon-boeuf', '27761145236812229': 'goicuon-veggie', '26942766625398026': 'ailes-poulet', '27755045017461245': 'banh-cuon',
+  '28389531647325708': 'boeuf-oignons', '27519868124309051': 'poulet-grille-viet', '27461466293511584': 'goi-tom-xoai', '27911793615112811': 'goi-ga'
+};
+// id-plat catalogue -> { store: id du panier order.js, page }. null = plat sans panier en ligne (entrées/spéciaux)
+function railToStore(railId) {
+  if (railId.startsWith('bobun-')) return { store: railId.slice(6), page: '/bobunbeef/' };
+  if (railId.startsWith('loclac-')) return { store: railId.replace('-', '_'), page: '/loclac/' };
+  if (railId === 'riz-cantonnais') return { store: 'riz_cantonnais', page: '/loclac/' };
+  if (railId.startsWith('padthai-')) return { store: railId.replace('-', '_'), page: '/padthai/' };
+  if (railId === 'mi-xao') return { store: 'mi_xao', page: '/padthai/' };
+  return null;
+}
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
   if (/crevette/.test(id)) return '🦐';
@@ -887,16 +906,32 @@ async function handleWhapiBody(body) {
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
-    // 0) PANIER natif WhatsApp (envoyé depuis le catalogue) : on accuse réception et on oriente vers le paiement
+    // 0) PANIER natif WhatsApp (envoyé depuis le catalogue) -> lien de paiement pré-rempli
     if (m.type === 'order' || m.order || (m.action && m.action.type === 'order')) {
       const ord = m.order || (m.action && m.action.order) || {};
+      try { console.log('whapi order:', JSON.stringify({ ...ord, preview: undefined })); } catch (e) {}
       const items = ord.product_items || ord.products || ord.items || [];
-      const n = items.reduce((s, it) => s + (Number(it && it.quantity) || 1), 0) || items.length || 0;
-      const body = `🛒 Merci pour votre panier${n ? ` (${n} article${n > 1 ? 's' : ''})` : ''} ! `
-        + `Pour finaliser et **payer en ligne** (retrait sur place ou Drive), c'est ici 👉 ${SITE()}\n\n`
-        + `Ou dites-moi simplement les plats que vous voulez, je vous envoie le lien direct 🙌`;
+      const n = Number(ord.item_count) || items.reduce((s, it) => s + (Number(it && it.quantity) || 1), 0) || items.length || 0;
+      // mappe chaque article -> panier order.js, groupé par page
+      const groups = {};
+      for (const it of items) {
+        const rid = String((it && (it.product_retailer_id || it.retailer_id || it.id)) || '');
+        const railId = /^\d+$/.test(rid) ? (WID_TO_DISH[rid] || '') : rid;
+        const rs = railId && railToStore(railId);
+        if (rs) for (let q = 0; q < (Number(it.quantity) || 1); q++) (groups[rs.page] || (groups[rs.page] = [])).push(rs.store);
+      }
+      const pages = Object.keys(groups);
+      let body;
+      if (pages.length) {
+        const links = pages.map(p => `${SITE()}${p}?add=${groups[p].join(',')}&mode=emporter`);
+        body = `🛒 Votre panier (${n} article${n > 1 ? 's' : ''}) est prêt !\n👉 Payez en ligne (retrait sur place ou Drive) :\n${links.join('\n')}`;
+      } else {
+        body = `🛒 Merci, panier bien reçu${n ? ` (${n} article${n > 1 ? 's' : ''})` : ''} ! `
+          + `Dites-moi les plats souhaités et je vous renvoie un *lien de paiement pré-rempli* en un tap 🙌\n`
+          + `Ou commandez ici 👉 ${SITE()}`;
+      }
       await whapi('/messages/text', { to: from, body }).catch(e => console.error('order ack:', e.message));
-      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp reçu de +${from} (${n} art.) — à convertir en commande payée.` }).catch(() => {});
+      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp de +${from} (${n} art.).` }).catch(() => {});
       continue;
     }
 
