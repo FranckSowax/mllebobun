@@ -171,84 +171,85 @@ function testPrinter() {
   });
 }
 
-/* ---- SSE : ecoute les nouvelles commandes ---- */
+/* ---- Polling : verifie les nouvelles commandes toutes les 5s ---- */
 
 const printed = new Set();
-let retryDelay = 3000;
+const POLL_INTERVAL = 5000;
 
-function connectSSE() {
-  const url = SERVER + '/api/orders/stream?key=' + encodeURIComponent(KEY);
+function fetchJSON(url) {
   const lib = url.startsWith('https') ? https : http;
+  return new Promise(function(resolve, reject) {
+    lib.get(url, { headers: { 'X-Dash-Key': KEY } }, function(res) {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', function(d) { body += d; });
+      res.on('end', function() {
+        if (res.statusCode === 401) return reject(new Error('Cle refusee (401)'));
+        if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
+        try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
 
-  console.log('[SSE] Connexion a ' + SERVER + ' ...');
+let polling = false;
+let firstPoll = true;
 
-  lib.get(url, function(res) {
-    if (res.statusCode === 401) {
-      console.error('[SSE] Cle refusee (401). Verifiez --key');
-      process.exit(1);
-    }
-    if (res.statusCode !== 200) {
-      console.error('[SSE] Erreur ' + res.statusCode + ', nouvelle tentative dans ' + (retryDelay / 1000) + 's');
-      setTimeout(connectSSE, retryDelay);
-      retryDelay = Math.min(retryDelay * 2, 30000);
-      return;
-    }
-
-    console.log('[SSE] Connecte ! En attente de commandes...\n');
-    retryDelay = 3000;
-
-    let buffer = '';
-
-    res.setEncoding('utf8');
-    res.on('data', function(chunk) {
-      buffer += chunk;
-      // parse SSE events
-      const parts = buffer.split('\n\n');
-      buffer = parts.pop(); // dernier element = incomplet
-      for (const part of parts) {
-        let event = 'message';
-        let data = '';
-        for (const line of part.split('\n')) {
-          if (line.startsWith('event: ')) event = line.slice(7).trim();
-          else if (line.startsWith('data: ')) data = line.slice(6);
-          else if (line.startsWith('retry:')) { /* ignore */ }
-          else if (line.startsWith(':')) { /* comment / ping */ }
-        }
-        if ((event === 'order' || event === 'reprint') && data) {
-          try {
-            const o = JSON.parse(data);
-            const isReprint = event === 'reprint';
-            if (!isReprint && printed.has(o.sessionId)) continue;
-            if (!isReprint) printed.add(o.sessionId);
-            const items = (o.items || []).map(function(i) { return i.qty + 'x ' + i.name; }).join(', ');
-            const label = isReprint ? 'RE-IMPRESSION' : 'COMMANDE';
-            console.log('[' + label + '] ' + o.code + ' | ' + items + ' | ' + eur(o.amount));
-            printTicket(o, 2)
-              .then(function() { console.log('[IMPRIME] ' + o.code + ' (x2 tickets)\n'); })
-              .catch(function(e) { console.error('[ERREUR]  Impression ' + o.code + ' : ' + e.message + '\n'); });
-          } catch (e) {
-            console.error('[ERREUR]  Parse : ' + e.message);
-          }
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    const data = await fetchJSON(SERVER + '/api/orders');
+    const orders = data.orders || [];
+    if (firstPoll) {
+      // premier poll : on marque tout comme deja vu
+      orders.forEach(function(o) { printed.add(o.sessionId); });
+      console.log('[POLL] ' + orders.length + ' commande(s) existante(s) chargees (pas de re-impression)\n');
+      firstPoll = false;
+    } else {
+      for (const o of orders) {
+        if (printed.has(o.sessionId)) continue;
+        printed.add(o.sessionId);
+        const items = (o.items || []).map(function(i) { return i.qty + 'x ' + i.name; }).join(', ');
+        console.log('[COMMANDE] ' + o.code + ' | ' + items + ' | ' + eur(o.amount));
+        try {
+          await printTicket(o, 2);
+          console.log('[IMPRIME] ' + o.code + ' (x2 tickets)\n');
+        } catch (e) {
+          console.error('[ERREUR]  Impression ' + o.code + ' : ' + e.message + '\n');
         }
       }
-    });
+    }
+  } catch (e) {
+    if (e.message.includes('401')) {
+      console.error('[ERREUR] Cle refusee. Verifiez --key');
+      process.exit(1);
+    }
+    console.error('[POLL] Erreur : ' + e.message + ' (nouvelle tentative dans 5s)');
+  }
+  polling = false;
+}
 
-    res.on('end', function() {
-      console.log('[SSE] Deconnecte, reconnexion dans 3s...');
-      setTimeout(connectSSE, 3000);
-    });
+async function pollReprint() {
+  try {
+    const data = await fetchJSON(SERVER + '/api/reprint');
+    for (const o of (data.orders || [])) {
+      const items = (o.items || []).map(function(i) { return i.qty + 'x ' + i.name; }).join(', ');
+      console.log('[RE-IMPRESSION] ' + o.code + ' | ' + items);
+      try {
+        await printTicket(o, 2);
+        console.log('[IMPRIME] ' + o.code + ' (x2 tickets)\n');
+      } catch (e) {
+        console.error('[ERREUR]  Impression ' + o.code + ' : ' + e.message + '\n');
+      }
+    }
+  } catch (e) { /* ignore, sera retente */ }
+}
 
-    res.on('error', function(e) {
-      console.error('[SSE] Erreur : ' + e.message);
-      setTimeout(connectSSE, retryDelay);
-    });
-
-  }).on('error', function(e) {
-    console.error('[SSE] Connexion impossible : ' + e.message);
-    console.error('      Nouvelle tentative dans ' + (retryDelay / 1000) + 's...');
-    setTimeout(connectSSE, retryDelay);
-    retryDelay = Math.min(retryDelay * 2, 30000);
-  });
+function startPolling() {
+  console.log('[POLL] Verification toutes les ' + (POLL_INTERVAL / 1000) + 's...\n');
+  poll();
+  setInterval(function() { poll(); pollReprint(); }, POLL_INTERVAL);
 }
 
 /* ---- Demarrage ---- */
@@ -264,11 +265,11 @@ console.log('');
 testPrinter()
   .then(function() {
     console.log('[OK] Imprimante Star mC-Print3 connectee\n');
-    connectSSE();
+    startPolling();
   })
   .catch(function(e) {
     console.error('[ATTENTION] Imprimante non joignable : ' + e.message);
     console.error('            Verifiez que l\'imprimante est allumee et sur le meme reseau wifi.\n');
     // on tente quand meme le SSE, l'imprimante sera peut-etre dispo plus tard
-    connectSSE();
+    startPolling();
   });

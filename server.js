@@ -1258,14 +1258,19 @@ app.post('/api/settings', checkKey, (req, res) => {
   res.json(settings);
 });
 
-/* impression ticket : broadcast SSE "reprint" pour le print-agent local */
+/* impression ticket : file d'attente pour le print-agent (polling) */
+const reprintQueue = [];
 app.post('/api/print', checkKey, (req, res) => {
   const { sessionId } = req.body || {};
   const order = orders.find(o => o.sessionId === sessionId);
   if (!order) return res.status(404).json({ error: 'Commande introuvable' });
-  // broadcast pour que le print-agent local imprime
-  broadcast('reprint', order);
+  reprintQueue.push(order);
+  broadcast('reprint', order); // SSE aussi, au cas ou
   res.json({ ok: true });
+});
+app.get('/api/reprint', checkKey, (req, res) => {
+  const batch = reprintQueue.splice(0);
+  res.json({ orders: batch });
 });
 
 /* catalogue pour la prise de commande sur place (piloté par le menu) */
