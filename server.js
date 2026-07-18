@@ -955,10 +955,17 @@ async function handleWhapiBody(body) {
     const now = Date.now();
 
     // 0bis) CHOIX DU MODE pour un panier WhatsApp -> paiement Stripe du total
-    if (btn && /cart_(emporter|drive)/.test(String(btn.id || ''))) {
-      const mode = /drive/.test(btn.id) ? 'drive' : 'emporter';
+    // (Whapi renvoie parfois l'id du bouton comme "ButtonsV3:0/1" -> on détecte aussi par titre/index)
+    if (pendingCart.has(from) && (btn || text)) {
+      const bid = String((btn && btn.id) || '');
+      const btxt = String((btn && btn.title) || text || '').toLowerCase();
+      let mode = null;
+      if (/cart_drive|drive|voiture|gar[ée]/.test(bid + ' ' + btxt) || bid.endsWith(':1')) mode = 'drive';
+      else if (/cart_emporter|emporter/.test(bid + ' ' + btxt) || bid.endsWith(':0')) mode = 'emporter';
+      if (mode) {
       const pc = pendingCart.get(from);
       if (!pc || pc.at < now - 45 * 60 * 1000) {
+        pendingCart.delete(from);
         await whapi('/messages/text', { to: from, body: 'Votre panier a expiré — renvoyez-le depuis le catalogue, ou dites-moi vos plats et je vous fais un lien 🙌' }).catch(() => {});
         continue;
       }
@@ -980,6 +987,7 @@ async function handleWhapiBody(body) {
         await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
       }
       continue;
+      }
     }
 
     /* ---- Flux DRIVE : actif UNIQUEMENT si le client a une commande Drive en cours
