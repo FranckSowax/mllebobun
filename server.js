@@ -887,6 +887,19 @@ async function handleWhapiBody(body) {
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
+    // 0) PANIER natif WhatsApp (envoyé depuis le catalogue) : on accuse réception et on oriente vers le paiement
+    if (m.type === 'order' || m.order || (m.action && m.action.type === 'order')) {
+      const ord = m.order || (m.action && m.action.order) || {};
+      const items = ord.product_items || ord.products || ord.items || [];
+      const n = items.reduce((s, it) => s + (Number(it && it.quantity) || 1), 0) || items.length || 0;
+      const body = `🛒 Merci pour votre panier${n ? ` (${n} article${n > 1 ? 's' : ''})` : ''} ! `
+        + `Pour finaliser et **payer en ligne** (retrait sur place ou Drive), c'est ici 👉 ${SITE()}\n\n`
+        + `Ou dites-moi simplement les plats que vous voulez, je vous envoie le lien direct 🙌`;
+      await whapi('/messages/text', { to: from, body }).catch(e => console.error('order ack:', e.message));
+      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp reçu de +${from} (${n} art.) — à convertir en commande payée.` }).catch(() => {});
+      continue;
+    }
+
     const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
     const now = Date.now();
