@@ -707,9 +707,8 @@ app.post('/api/drive', async (req, res) => {
 /* ---------- Menu via sondage (poll) : la carte + réponse auto au vote ---------- */
 
 const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
-const UBER_URL = 'https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw';
-// Pad Thai n'a pas encore de page panier -> commande via Uber Eats ; sinon page du site
-function orderUrl(dish) { return dish && dish.cat === 'padthai' ? UBER_URL : SITE() + dishPage(dish ? dish.cat : ''); }
+// lien profond : ouvre la page de commande avec le plat déjà dans le panier (prêt à payer)
+function orderUrl(dish) { return SITE() + dishPage(dish ? dish.cat : '') + (dish && dish.id ? '?add=' + encodeURIComponent(dish.id) : ''); }
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
   if (/crevette/.test(id)) return '🦐';
@@ -717,7 +716,7 @@ function dishEmoji(id) {
   if (/veggie/.test(id)) return '🌱';
   return '🥩';
 }
-function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : cat === 'padthai' ? '/' : '/bobunbeef/'; }
+function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : cat === 'padthai' ? '/padthai/' : '/bobunbeef/'; }
 function dishJpg(item) {
   const m = String(item.image || '').match(/\/assets\/plats\/([a-z0-9-]+)\.webp$/i);
   return m ? `/assets/plats/${m[1]}.jpg` : '';
@@ -1231,6 +1230,23 @@ app.get('/comptoir', (req, res) => res.sendFile(path.join(__dirname, 'comptoir',
 // l'ancien film « la descente du bol » reste accessible sur /film
 app.get('/film', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/film/', (req, res) => res.redirect(301, '/film'));
+
+/* Pixel Meta piloté par META_PIXEL_ID : no-op tant que la variable n'est pas définie.
+   Expose window.mllePixel.track(event, data) utilisé par order.js / merci.html. */
+app.get('/pixel.js', (req, res) => {
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=300');
+  const id = String(process.env.META_PIXEL_ID || '');
+  if (!/^\d{6,}$/.test(id)) { res.end('window.mllePixel={track:function(){}};'); return; }
+  res.end(
+    "!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?" +
+    "n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;" +
+    "n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;" +
+    "t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}" +
+    "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');" +
+    "fbq('init','" + id + "');fbq('track','PageView');" +
+    "window.mllePixel={track:function(ev,data){try{fbq('track',ev,data||{})}catch(e){}}};"
+  );
+});
 
 /* ---------- Site statique ---------- */
 

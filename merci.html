@@ -116,6 +116,7 @@
 
     <a class="back" href="/">← Retour au site</a>
   </main>
+  <script src="/pixel.js"></script>
   <script>
     (async () => {
       const id = new URLSearchParams(location.search).get('session_id');
@@ -127,6 +128,8 @@
           document.getElementById('pickup-code').textContent = d.code;
           document.getElementById('pickup').hidden = false;
         }
+        // pixel : conversion (valeur de la commande)
+        if (d.amount) { try { window.mllePixel && window.mllePixel.track('Purchase', { value: d.amount / 100, currency: 'EUR' }); } catch (e) {} }
       } catch (e) { /* silencieux */ }
 
       // option Drive : signaler sa présence

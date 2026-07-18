@@ -37,6 +37,11 @@
 
   const eur = c => (c / 100).toFixed(2).replace('.', ',') + ' €';
 
+  // id du panier (ex. "boeuf", "loclac_boeuf") -> retailer_id du catalogue Meta (ex. "bobun-boeuf")
+  const catalogId = id => ['boeuf', 'poulet', 'crevette', 'veggie'].includes(id) ? 'bobun-' + id : id.replace(/_/g, '-');
+  // pixel Meta (no-op si META_PIXEL_ID absent — voir /pixel.js)
+  const px = (ev, data) => { try { window.mllePixel && window.mllePixel.track(ev, data); } catch (e) {} };
+
   const grid = document.querySelector('.choix-grid');
   const platformRow = document.querySelector('.platform-row');
   if (!grid || !platformRow) return;
@@ -175,7 +180,10 @@
     if (!btn) return;
     const id = btn.closest('.qty').dataset.id;
     if (+btn.dataset.d > 0) {
-      if (lines.length < MAX_QTY) lines.push({ uid: uidSeq++, dishId: id, sups: {} });
+      if (lines.length < MAX_QTY) {
+        lines.push({ uid: uidSeq++, dishId: id, sups: {} });
+        px('AddToCart', { content_type: 'product', content_ids: [catalogId(id)], currency: 'EUR', value: dishById[id].price / 100 });
+      }
     } else {
       for (let i = lines.length - 1; i >= 0; i--) { if (lines[i].dishId === id) { lines.splice(i, 1); break; } }
     }
@@ -229,6 +237,22 @@
       payBtn.classList.remove('is-loading');
     }
   });
+
+  // pixel : vue des plats de cette page (retargeting)
+  px('ViewContent', { content_type: 'product', content_ids: ITEMS.map(i => catalogId(i.id)), currency: 'EUR' });
+
+  // lien profond (pubs catalogue / concierge) : ?add=<id>[,<id>] -> panier pré-rempli, prêt à payer
+  const addParam = new URLSearchParams(location.search).get('add');
+  if (addParam) {
+    addParam.split(',').forEach(raw => {
+      const id = raw.trim();
+      if (dishById[id] && lines.length < MAX_QTY) {
+        lines.push({ uid: uidSeq++, dishId: id, sups: {} });
+        px('AddToCart', { content_type: 'product', content_ids: [catalogId(id)], currency: 'EUR', value: dishById[id].price / 100 });
+      }
+    });
+    if (lines.length) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+  }
 
   render();
 })();
