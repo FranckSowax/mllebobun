@@ -971,14 +971,25 @@ async function handleWhapiBody(body) {
       }
       pendingCart.delete(from);
       const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
+      // message d'attente immédiat (la création de session + l'envoi Whapi prennent quelques secondes)
+      await whapi('/messages/text', { to: from, body: '⏳ Je prépare votre paiement sécurisé, un petit instant…' }).catch(() => {});
       try {
         const co = await createCartCheckout(from, pc.cents, pc.count, mode);
         if (co && co.url) {
-          await whapi('/messages/text', {
-            to: from,
-            body: `👉 *Payer ${eurTxt} € (${mode === 'drive' ? 'Drive' : 'À emporter'})* :\n${co.url}\n\nVous recevrez votre code de retrait ici même 🙌`
-              + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule pour qu’on vous apporte la commande.' : '')
-          }).catch(() => {});
+          const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})\n`
+            + `Paiement sécurisé Stripe · vous recevrez votre code de retrait ici même 🙌`
+            + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule.' : '');
+          try {
+            // lien de paiement sous un bouton (URL) — évite l'URL brute tronquée par WhatsApp
+            await whapi('/messages/interactive', {
+              to: from, type: 'button',
+              body: { text: body },
+              footer: { text: 'Mademoiselle Bobùn' },
+              action: { buttons: [{ type: 'url', title: `💳 Payer ${eurTxt} €`, id: 'pay', url: co.url }] }
+            });
+          } catch (e2) {
+            await whapi('/messages/text', { to: from, body: `${body}\n👉 ${co.url}` }).catch(() => {});
+          }
         } else {
           await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
         }
