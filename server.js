@@ -719,6 +719,29 @@ const WID_TO_DISH = {
   '27465779216422697': 'goicuon-boeuf', '27761145236812229': 'goicuon-veggie', '26942766625398026': 'ailes-poulet', '27755045017461245': 'banh-cuon',
   '28389531647325708': 'boeuf-oignons', '27519868124309051': 'poulet-grille-viet', '27461466293511584': 'goi-tom-xoai', '27911793615112811': 'goi-ga'
 };
+// id-produit WhatsApp -> { nom, cents } : nom/prix relus ici (jamais depuis le webhook = anti-manipulation)
+const WID_INFO = {
+  '26596403743369956': { nom: 'Bo Bún Bœuf', cents: 1390 }, '27811222148508441': { nom: 'Bo Bún Poulet', cents: 1290 }, '27718442327840355': { nom: 'Bo Bún Crevette', cents: 1390 }, '27630855043244372': { nom: 'Bo Bún Veggie', cents: 1190 },
+  '28223213057262715': { nom: 'Loc Lac Bœuf', cents: 1490 }, '28076505905317920': { nom: 'Loc Lac Poulet', cents: 1390 }, '27770553009241995': { nom: 'Loc Lac Veggie', cents: 1290 }, '27293247087043409': { nom: 'Riz Cantonnais', cents: 1090 },
+  '36995525706729631': { nom: 'Pad Thai Poulet', cents: 1390 }, '27223951510638005': { nom: 'Pad Thai Bœuf', cents: 1490 }, '27788218260775045': { nom: 'Pad Thai Crevette', cents: 1490 }, '28863302836593573': { nom: 'Mi Xao', cents: 1300 },
+  '27902920422680039': { nom: 'Nems Poulet / Veggie', cents: 600 }, '27746997494931796': { nom: 'Samoussa Poulet / Légumes', cents: 600 }, '27870549665940779': { nom: 'Raviolis Frits aux Crevettes', cents: 600 }, '27980594338296747': { nom: 'Gỏi Cuốn Crevette', cents: 700 },
+  '27465779216422697': { nom: 'Gỏi Cuốn Bœuf / Poulet', cents: 650 }, '27761145236812229': { nom: 'Gỏi Cuốn Veggie', cents: 600 }, '26942766625398026': { nom: 'Ailes de Poulet', cents: 700 }, '27755045017461245': { nom: 'Bánh Cuốn', cents: 750 },
+  '28389531647325708': { nom: 'Bœuf aux Oignons', cents: 1200 }, '27519868124309051': { nom: 'Poulet Grillé Façon Viêt', cents: 1200 }, '27461466293511584': { nom: 'Gỏi Tôm Xoài', cents: 900 }, '27911793615112811': { nom: 'Gỏi Gà', cents: 800 }
+};
+
+// récupère le détail d'un panier natif WhatsApp via son token (à appeler À CHAUD — les tokens expirent vite)
+async function whapiGetOrderItems(orderId, token) {
+  if (!WHAPI_TOKEN || !orderId || !token) return null;
+  try {
+    const url = `${WHAPI_API_URL}/business/orders/${encodeURIComponent(orderId)}?token=${encodeURIComponent(token)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${WHAPI_TOKEN}` }, signal: AbortSignal.timeout(15000) });
+    const txt = await res.text();
+    if (!res.ok) { console.error('getOrderItems', res.status, txt.slice(0, 150)); return null; }
+    let j = {}; try { j = JSON.parse(txt); } catch (e) { return null; }
+    const arr = j.products || j.items || j.product_items || (Array.isArray(j) ? j : []);
+    return arr.map(it => ({ rid: String((it && (it.retailer_id || it.product_retailer_id || it.id)) || ''), qty: Math.max(1, Number(it && it.quantity) || 1) })).filter(x => x.rid);
+  } catch (e) { console.error('getOrderItems err', e.message); return null; }
+}
 // id-plat catalogue -> { store: id du panier order.js, page }. null = plat sans panier en ligne (entrées/spéciaux)
 function railToStore(railId) {
   if (railId.startsWith('bobun-')) return { store: railId.slice(6), page: '/bobunbeef/' };
@@ -733,13 +756,22 @@ function railToStore(railId) {
 const pendingCart = new Map();
 
 // paiement du TOTAL d'un panier WhatsApp (on n'a pas le détail des plats, seulement le montant)
-async function createCartCheckout(from, cents, count, mode, upsellNems) {
+async function createCartCheckout(from, pc, mode, upsellNems) {
   if (!stripe) return null;
   const drive = mode === 'drive';
   const code = pickupCode();
-  const line_items = [{ quantity: 1, price_data: { currency: 'eur', unit_amount: cents, product_data: { name: `Commande WhatsApp — ${count} article${count > 1 ? 's' : ''}` } } }];
-  if (upsellNems) line_items.push({ quantity: 1, price_data: { currency: 'eur', unit_amount: 300, product_data: { name: 'Supplément 2 nems' } } });
-  const note = 'Panier WhatsApp — détail visible dans l’app WhatsApp Business' + (upsellNems ? ' · + 2 nems' : '');
+  let line_items, note;
+  if (pc.lines && pc.lines.length) {
+    // panier détaillé (via le token) : vraies lignes, prix relus dans WID_INFO
+    line_items = pc.lines.map(l => ({ quantity: l.qty, price_data: { currency: 'eur', unit_amount: l.cents, product_data: { name: l.name } } }));
+    note = 'Commande WhatsApp';
+  } else {
+    // repli : on n'a que le total
+    line_items = [{ quantity: 1, price_data: { currency: 'eur', unit_amount: pc.cents, product_data: { name: `Commande WhatsApp — ${pc.count} article${pc.count > 1 ? 's' : ''}` } } }];
+    note = 'Panier WhatsApp — détail visible dans l’app WhatsApp Business';
+  }
+  if (upsellNems) { line_items.push({ quantity: 1, price_data: { currency: 'eur', unit_amount: 300, product_data: { name: 'Supplément 2 nems' } } }); note += ' · +2 nems'; }
+  const total = line_items.reduce((s, li) => s + li.price_data.unit_amount * li.quantity, 0);
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', locale: 'fr', submit_type: 'pay', line_items,
     metadata: { source: drive ? 'whatsapp — Drive' : 'whatsapp — à emporter', note, code, wa: from, mode: drive ? 'drive' : 'emporter' },
@@ -747,7 +779,7 @@ async function createCartCheckout(from, cents, count, mode, upsellNems) {
     success_url: `${SITE()}/merci.html?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${SITE()}/`
   });
-  return { url: session.url, code, total: cents + (upsellNems ? 300 : 0) };
+  return { url: session.url, code, total };
 }
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
@@ -927,14 +959,25 @@ async function handleWhapiBody(body) {
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
-    // 0) PANIER natif WhatsApp (Whapi ne donne que le total + le nb d'articles) -> demande le mode
+    // 0) PANIER natif WhatsApp -> récupère le détail via le token (à chaud) puis demande le mode
     if (m.type === 'order' || m.order || (m.action && m.action.type === 'order')) {
       const ord = m.order || (m.action && m.action.order) || {};
-      const n = Number(ord.item_count) || 0;
-      const cents = Math.round((Number(ord.total_price) || 0) * 100);
+      const nMsg = Number(ord.item_count) || 0;
+      const totalCents = Math.round((Number(ord.total_price) || 0) * 100);
+      // détail du panier via getOrderItems (token) -> lignes avec nom/prix relus dans WID_INFO
+      let lines = null;
+      const raw = await whapiGetOrderItems(ord.order_id || ord.id, ord.token);
+      if (raw && raw.length) {
+        const acc = [];
+        for (const it of raw) { const inf = WID_INFO[it.rid]; if (inf) acc.push({ name: inf.nom, cents: inf.cents, qty: it.qty }); }
+        if (acc.length) lines = acc;
+      }
+      const cents = lines ? lines.reduce((s, l) => s + l.cents * l.qty, 0) : totalCents;
+      const count = lines ? lines.reduce((s, l) => s + l.qty, 0) : nMsg;
       const eurTxt = (cents / 100).toFixed(2).replace('.', ',');
-      if (cents > 0) pendingCart.set(from, { cents, count: n, at: Date.now() });
-      const body = `🛒 Panier bien reçu — *${n} article${n > 1 ? 's' : ''} · ${eurTxt} €* !\nComment souhaitez-vous récupérer votre commande ?`;
+      if (cents > 0) pendingCart.set(from, { lines, cents, count, at: Date.now(), mode: null });
+      const detail = lines ? '\n' + lines.map(l => `• ${l.qty}× ${l.name}`).join('\n') : '';
+      const body = `🛒 Panier bien reçu — *${count} article${count > 1 ? 's' : ''} · ${eurTxt} €*${detail}\n\nComment souhaitez-vous récupérer votre commande ?`;
       try {
         await whapi('/messages/interactive', {
           to: from, type: 'button',
@@ -948,7 +991,7 @@ async function handleWhapiBody(body) {
       } catch (e) {
         await whapi('/messages/text', { to: from, body: body + '\nRépondez « emporter » ou « drive ».' }).catch(() => {});
       }
-      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp de +${from} (${n} art. · ${eurTxt} €).` }).catch(() => {});
+      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp de +${from} (${count} art. · ${eurTxt} €)${lines ? ' :\n' + lines.map(l => `${l.qty}× ${l.name}`).join('\n') : ''}` }).catch(() => {});
       continue;
     }
 
@@ -999,7 +1042,7 @@ async function handleWhapiBody(body) {
         pendingCart.delete(from);
         await whapi('/messages/text', { to: from, body: '⏳ Je prépare votre paiement sécurisé, un petit instant…' }).catch(() => {});
         try {
-          const co = await createCartCheckout(from, pc.cents, pc.count, mode, addNems);
+          const co = await createCartCheckout(from, pc, mode, addNems);
           if (co && co.url) {
             const eurTxt = (co.total / 100).toFixed(2).replace('.', ',');
             const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})${addNems ? ' · +2 nems' : ''}\n`
