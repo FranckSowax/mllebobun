@@ -728,6 +728,25 @@ function railToStore(railId) {
   if (railId === 'mi-xao') return { store: 'mi_xao', page: '/padthai/' };
   return null;
 }
+
+// paniers natifs WhatsApp en attente de choix du mode : from -> { cents, count, at }
+const pendingCart = new Map();
+
+// paiement du TOTAL d'un panier WhatsApp (on n'a pas le détail des plats, seulement le montant)
+async function createCartCheckout(from, cents, count, mode) {
+  if (!stripe) return null;
+  const drive = mode === 'drive';
+  const code = pickupCode();
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment', locale: 'fr', submit_type: 'pay',
+    line_items: [{ quantity: 1, price_data: { currency: 'eur', unit_amount: cents, product_data: { name: `Commande WhatsApp — ${count} article${count > 1 ? 's' : ''}` } } }],
+    metadata: { source: drive ? 'whatsapp — Drive' : 'whatsapp — à emporter', note: '—', code, wa: from, mode: drive ? 'drive' : 'emporter' },
+    payment_intent_data: { description: `Commande ${drive ? 'Drive' : 'à emporter'} ${code} — Mademoiselle Bobùn (WhatsApp)` },
+    success_url: `${SITE()}/merci.html?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${SITE()}/`
+  });
+  return { url: session.url, code };
+}
 const centsEur = a => (a / 100).toFixed(2).replace('.', ',') + ' €';
 function dishEmoji(id) {
   if (/crevette/.test(id)) return '🦐';
@@ -906,38 +925,62 @@ async function handleWhapiBody(body) {
     const from = String(m.from || m.chat_id || m.sender || '').replace(/\D/g, '');
     if (!from) continue;
 
-    // 0) PANIER natif WhatsApp (envoyé depuis le catalogue) -> lien de paiement pré-rempli
+    // 0) PANIER natif WhatsApp (Whapi ne donne que le total + le nb d'articles) -> demande le mode
     if (m.type === 'order' || m.order || (m.action && m.action.type === 'order')) {
       const ord = m.order || (m.action && m.action.order) || {};
-      try { console.log('whapi order:', JSON.stringify({ ...ord, preview: undefined })); } catch (e) {}
-      const items = ord.product_items || ord.products || ord.items || [];
-      const n = Number(ord.item_count) || items.reduce((s, it) => s + (Number(it && it.quantity) || 1), 0) || items.length || 0;
-      // mappe chaque article -> panier order.js, groupé par page
-      const groups = {};
-      for (const it of items) {
-        const rid = String((it && (it.product_retailer_id || it.retailer_id || it.id)) || '');
-        const railId = /^\d+$/.test(rid) ? (WID_TO_DISH[rid] || '') : rid;
-        const rs = railId && railToStore(railId);
-        if (rs) for (let q = 0; q < (Number(it.quantity) || 1); q++) (groups[rs.page] || (groups[rs.page] = [])).push(rs.store);
+      const n = Number(ord.item_count) || 0;
+      const cents = Math.round((Number(ord.total_price) || 0) * 100);
+      const eurTxt = (cents / 100).toFixed(2).replace('.', ',');
+      if (cents > 0) pendingCart.set(from, { cents, count: n, at: Date.now() });
+      const body = `🛒 Panier bien reçu — *${n} article${n > 1 ? 's' : ''} · ${eurTxt} €* !\nComment souhaitez-vous récupérer votre commande ?`;
+      try {
+        await whapi('/messages/interactive', {
+          to: from, type: 'button',
+          body: { text: body },
+          footer: { text: 'Paiement en ligne · retrait au 200 bis rue Malbec' },
+          action: { buttons: [
+            { type: 'quick_reply', title: '🥡 À emporter', id: 'cart_emporter' },
+            { type: 'quick_reply', title: '🚗 Drive', id: 'cart_drive' }
+          ] }
+        });
+      } catch (e) {
+        await whapi('/messages/text', { to: from, body: body + '\nRépondez « emporter » ou « drive ».' }).catch(() => {});
       }
-      const pages = Object.keys(groups);
-      let body;
-      if (pages.length) {
-        const links = pages.map(p => `${SITE()}${p}?add=${groups[p].join(',')}&mode=emporter`);
-        body = `🛒 Votre panier (${n} article${n > 1 ? 's' : ''}) est prêt !\n👉 Payez en ligne (retrait sur place ou Drive) :\n${links.join('\n')}`;
-      } else {
-        body = `🛒 Merci, panier bien reçu${n ? ` (${n} article${n > 1 ? 's' : ''})` : ''} ! `
-          + `Dites-moi les plats souhaités et je vous renvoie un *lien de paiement pré-rempli* en un tap 🙌\n`
-          + `Ou commandez ici 👉 ${SITE()}`;
-      }
-      await whapi('/messages/text', { to: from, body }).catch(e => console.error('order ack:', e.message));
-      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp de +${from} (${n} art.).` }).catch(() => {});
+      if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🛒 Panier WhatsApp de +${from} (${n} art. · ${eurTxt} €).` }).catch(() => {});
       continue;
     }
 
     const btn = extractButton(m);
     const text = (m.text && m.text.body ? String(m.text.body) : (typeof m.body === 'string' ? m.body : '')).trim();
     const now = Date.now();
+
+    // 0bis) CHOIX DU MODE pour un panier WhatsApp -> paiement Stripe du total
+    if (btn && /cart_(emporter|drive)/.test(String(btn.id || ''))) {
+      const mode = /drive/.test(btn.id) ? 'drive' : 'emporter';
+      const pc = pendingCart.get(from);
+      if (!pc || pc.at < now - 45 * 60 * 1000) {
+        await whapi('/messages/text', { to: from, body: 'Votre panier a expiré — renvoyez-le depuis le catalogue, ou dites-moi vos plats et je vous fais un lien 🙌' }).catch(() => {});
+        continue;
+      }
+      pendingCart.delete(from);
+      const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
+      try {
+        const co = await createCartCheckout(from, pc.cents, pc.count, mode);
+        if (co && co.url) {
+          await whapi('/messages/text', {
+            to: from,
+            body: `👉 *Payer ${eurTxt} € (${mode === 'drive' ? 'Drive' : 'À emporter'})* :\n${co.url}\n\nVous recevrez votre code de retrait ici même 🙌`
+              + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule pour qu’on vous apporte la commande.' : '')
+          }).catch(() => {});
+        } else {
+          await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
+        }
+      } catch (e) {
+        console.error('cart checkout:', e.message);
+        await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
+      }
+      continue;
+    }
 
     /* ---- Flux DRIVE : actif UNIQUEMENT si le client a une commande Drive en cours
        (état awaitingVehicle / awaitingPark posé après un paiement « Drive »). Sinon → concierge. ---- */
