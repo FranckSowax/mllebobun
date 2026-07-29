@@ -21,10 +21,10 @@
 
   /* la page peut définir son propre catalogue via window.ORDER_ITEMS */
   const ITEMS = window.ORDER_ITEMS || [
-    { id: 'boeuf', price: 1390 },
-    { id: 'poulet', price: 1290 },
-    { id: 'crevette', price: 1390 },
-    { id: 'veggie', price: 1190 }
+    { id: 'boeuf', price: 1200 },
+    { id: 'poulet', price: 1200 },
+    { id: 'crevette', price: 1300 },
+    { id: 'veggie', price: 1200 }
   ];
   const SUPS = [
     { id: 'sup_nems', name: 'Supplément 2 nems', price: 300 },
