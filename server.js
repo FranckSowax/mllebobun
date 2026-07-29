@@ -135,38 +135,38 @@ async function sbLoad() {
 const CATALOG = {
   boeuf: {
     name: 'Bo Bún Bœuf',
-    amount: 1390,
+    amount: 1200,
     description: 'Vermicelles au bœuf citronnelle avec nems au poulet, cacahuètes, oignons frits et crudités.'
   },
   poulet: {
     name: 'Bo Bún Poulet',
-    amount: 1290,
+    amount: 1200,
     description: 'Poulet mariné à la citronnelle, nems au poulet, cacahuètes, oignons frits et crudités.'
   },
   veggie: {
     name: 'Bo Bún Veggie',
-    amount: 1190,
+    amount: 1200,
     description: 'Nems végétariens, tofu doré à la citronnelle, cacahuètes, oignons frits et crudités.'
   },
   crevette: {
     name: 'Bo Bún Crevette',
-    amount: 1390,
+    amount: 1300,
     description: 'Tôm bun avec vermicelles, crevettes décortiquées et nems, cacahuètes et oignons frits et crudités.'
   },
   /* loc lac */
   loclac_boeuf: {
     name: 'Loc Lac Bœuf',
-    amount: 1490,
+    amount: 1200,
     description: 'Dés de bœuf marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
   },
   loclac_poulet: {
     name: 'Loc Lac Poulet',
-    amount: 1390,
+    amount: 1200,
     description: 'Émincés de poulet marinés sautés au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
   },
   loclac_veggie: {
     name: 'Loc Lac Veggie',
-    amount: 1290,
+    amount: 1200,
     description: 'Tofu doré sauté au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
   },
   /* suppléments */
@@ -708,7 +708,11 @@ app.post('/api/drive', async (req, res) => {
 
 const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
 // lien profond : ouvre la page de commande avec le plat déjà dans le panier (prêt à payer)
-function orderUrl(dish) { return SITE() + dishPage(dish ? dish.cat : '') + (dish && dish.id ? '?add=' + encodeURIComponent(dish.id) : ''); }
+function orderUrl(dish) {
+  const page = dishPage(dish ? dish.cat : '');
+  const hasCart = page !== '/';
+  return SITE() + page + (hasCart && dish && dish.id ? '?add=' + encodeURIComponent(dish.id) : '');
+}
 
 // panier natif WhatsApp : id-produit WhatsApp (Whapi) -> id-plat du catalogue (rails)
 const WID_TO_DISH = {
@@ -721,9 +725,9 @@ const WID_TO_DISH = {
 };
 // id-produit WhatsApp -> { nom, cents } : nom/prix relus ici (jamais depuis le webhook = anti-manipulation)
 const WID_INFO = {
-  '26596403743369956': { nom: 'Bo Bún Bœuf', cents: 1390 }, '27811222148508441': { nom: 'Bo Bún Poulet', cents: 1290 }, '27718442327840355': { nom: 'Bo Bún Crevette', cents: 1390 }, '27630855043244372': { nom: 'Bo Bún Veggie', cents: 1190 },
-  '28223213057262715': { nom: 'Loc Lac Bœuf', cents: 1490 }, '28076505905317920': { nom: 'Loc Lac Poulet', cents: 1390 }, '27770553009241995': { nom: 'Loc Lac Veggie', cents: 1290 }, '27293247087043409': { nom: 'Riz Cantonnais', cents: 1090 },
-  '36995525706729631': { nom: 'Pad Thai Poulet', cents: 1390 }, '27223951510638005': { nom: 'Pad Thai Bœuf', cents: 1490 }, '27788218260775045': { nom: 'Pad Thai Crevette', cents: 1490 }, '28863302836593573': { nom: 'Mi Xao', cents: 1300 },
+  '26596403743369956': { nom: 'Bo Bún Bœuf', cents: 1200 }, '27811222148508441': { nom: 'Bo Bún Poulet', cents: 1200 }, '27718442327840355': { nom: 'Bo Bún Crevette', cents: 1300 }, '27630855043244372': { nom: 'Bo Bún Veggie', cents: 1200 },
+  '28223213057262715': { nom: 'Loc Lac Bœuf', cents: 1200 }, '28076505905317920': { nom: 'Loc Lac Poulet', cents: 1200 }, '27770553009241995': { nom: 'Loc Lac Veggie', cents: 1200 }, '27293247087043409': { nom: 'Riz Cantonnais', cents: 1090 },
+  '36995525706729631': { nom: 'Pad Thai Poulet', cents: 1200 }, '27223951510638005': { nom: 'Pad Thai Bœuf', cents: 1200 }, '27788218260775045': { nom: 'Pad Thai Crevette', cents: 1300 }, '28863302836593573': { nom: 'Mi Xao', cents: 1300 },
   '27902920422680039': { nom: 'Nems Poulet / Veggie', cents: 600 }, '27746997494931796': { nom: 'Samoussa Poulet / Légumes', cents: 600 }, '27870549665940779': { nom: 'Raviolis Frits aux Crevettes', cents: 600 }, '27980594338296747': { nom: 'Gỏi Cuốn Crevette', cents: 700 },
   '27465779216422697': { nom: 'Gỏi Cuốn Bœuf / Poulet', cents: 650 }, '27761145236812229': { nom: 'Gỏi Cuốn Veggie', cents: 600 }, '26942766625398026': { nom: 'Ailes de Poulet', cents: 700 }, '27755045017461245': { nom: 'Bánh Cuốn', cents: 750 },
   '28389531647325708': { nom: 'Bœuf aux Oignons', cents: 1200 }, '27519868124309051': { nom: 'Poulet Grillé Façon Viêt', cents: 1200 }, '27461466293511584': { nom: 'Gỏi Tôm Xoài', cents: 900 }, '27911793615112811': { nom: 'Gỏi Gà', cents: 800 }
@@ -789,7 +793,12 @@ function dishEmoji(id) {
   if (/veggie/.test(id)) return '🌱';
   return '🥩';
 }
-function dishPage(cat) { return cat === 'loclac' ? '/loclac/' : cat === 'padthai' ? '/padthai/' : '/bobunbeef/'; }
+function dishPage(cat) {
+  if (cat === 'loclac') return '/loclac/';
+  if (cat === 'padthai') return '/padthai/';
+  if (cat === 'bobun') return '/bobunbeef/';
+  return '/'; // entrées & spécial : pas de page panier dédiée -> la carte
+}
 function dishJpg(item) {
   const m = String(item.image || '').match(/\/assets\/plats\/([a-z0-9-]+)\.webp$/i);
   return m ? `/assets/plats/${m[1]}.jpg` : '';
@@ -1314,7 +1323,7 @@ app.post('/api/menu', checkKey, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Le nom est requis.' });
     const amount = Math.max(0, Math.round(Number(b.amount) || 0));
     const row = {
-      id, cat: ['bobun', 'loclac', 'padthai', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
+      id, cat: ['bobun', 'loclac', 'padthai', 'entrees', 'special', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
       name, name_vn: String(b.name_vn || '').slice(0, 80),
       description: String(b.description || '').slice(0, 400),
       amount, image: String(b.image || '').slice(0, 400),

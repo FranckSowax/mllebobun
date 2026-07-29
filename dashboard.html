@@ -468,7 +468,7 @@
         <div><label class="mm-label">NOM</label><input id="mm-name" type="text" maxlength="80"></div>
         <div><label class="mm-label">NOM VIETNAMIEN</label><input id="mm-namevn" type="text" maxlength="80"></div>
         <div><label class="mm-label">CATÉGORIE</label>
-          <select id="mm-cat"><option value="bobun">Bo Bún</option><option value="loclac">Loc Lac</option><option value="padthai">Pad Thai</option><option value="supplement">Supplément</option></select>
+          <select id="mm-cat"><option value="bobun">Bo Bún</option><option value="loclac">Loc Lac</option><option value="padthai">Pad Thai</option><option value="entrees">Entrées</option><option value="special">Spécial Viêt</option><option value="supplement">Supplément</option></select>
         </div>
         <div><label class="mm-label">PRIX (€)</label><input id="mm-price" type="number" step="0.10" min="0"></div>
       </div>
@@ -935,7 +935,7 @@
 
       /* ============ VUE MENU & PRIX ============ */
       const eurNum = c => (c / 100).toFixed(2).replace('.', ',') + ' €';
-      const catLabel = { bobun: 'BO BÚN', loclac: 'LOC LAC', padthai: 'PAD THAI', supplement: 'SUPPLÉMENT' };
+      const catLabel = { bobun: 'BO BÚN', loclac: 'LOC LAC', padthai: 'PAD THAI', entrees: 'ENTRÉES', special: 'SPÉCIAL VIÊT', supplement: 'SUPPLÉMENT' };
       let menuItems = [];
       let menuEditable = false;
 
