@@ -1288,7 +1288,7 @@ app.get('/api/catalog', checkKey, (req, res) => {
   res.json({
     items: Object.values(cat)
       .sort((a, b) => (a.sort || 0) - (b.sort || 0))
-      .map(c => ({ id: c.id, name: c.name, name_vn: c.name_vn || '', amount: c.amount, sup: !!c.sup }))
+      .map(c => ({ id: c.id, name: c.name, name_vn: c.name_vn || '', amount: c.amount, sup: !!c.sup, cat: c.cat || '', image: c.image || '' }))
   });
 });
 

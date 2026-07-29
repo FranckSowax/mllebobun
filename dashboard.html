@@ -223,20 +223,71 @@
       background: transparent; border: 1px solid rgba(244,237,224,.25); color: var(--ivoire);
       width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: .95rem;
     }
-    .cat-list { display: flex; flex-direction: column; gap: 8px; }
-    .cat-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .cat-row.sup { padding-left: 14px; }
-    .cat-name { font-weight: 300; font-size: .92rem; flex: 1; }
-    .cat-row.sup .cat-name { color: rgba(244,237,224,.65); font-size: .85rem; }
-    .cat-vn { display: block; font-size: .64rem; color: rgba(232,145,45,.72); margin-top: 1px; letter-spacing: .02em; }
-    .cat-prix { font-family: var(--mono); font-size: .78rem; color: var(--caramel); white-space: nowrap; }
-    .cat-qty { display: inline-flex; align-items: center; gap: 3px; border: 1px solid rgba(244,237,224,.22); border-radius: 999px; padding: 2px; }
-    .cat-qty button {
-      width: 30px; height: 30px; border: none; border-radius: 50%; background: transparent;
-      color: var(--ivoire); font-size: 1.05rem; cursor: pointer;
+    /* ---- caisse tactile (type iPad) ---- */
+    .pos-box { width: min(1180px, 100%); height: min(94vh, 100%); max-height: 94vh; }
+    .pos-main { display: flex; gap: 18px; flex: 1; min-height: 0; }
+    .pos-grid-wrap { flex: 1; overflow-y: auto; padding-right: 6px; -webkit-overflow-scrolling: touch; }
+    .pos-cat-h {
+      font-family: var(--mono); font-size: .62rem; letter-spacing: .16em;
+      color: var(--caramel); margin: 16px 0 9px;
     }
-    .cat-qty button:hover { background: var(--caramel); color: var(--noir); }
-    .cat-qty span { min-width: 22px; text-align: center; font-family: var(--mono); font-size: .85rem; }
+    .pos-cat-h:first-child { margin-top: 0; }
+    .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .pos-card {
+      position: relative; text-align: left; padding: 0 0 10px;
+      background: rgba(244,237,224,.03); border: 1px solid rgba(244,237,224,.12);
+      border-radius: 14px; overflow: hidden; cursor: pointer;
+      transition: transform .08s, border-color .2s;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+      color: var(--ivoire); font-family: var(--sans);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .pos-card:active { transform: scale(.95); }
+    .pos-card.in-cart { border-color: var(--caramel); }
+    .pos-card img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; margin-bottom: 6px; }
+    .pc-name { font-weight: 600; font-size: .84rem; line-height: 1.2; padding: 0 10px; }
+    .pc-vn { font-size: .6rem; color: rgba(232,145,45,.72); padding: 0 10px; }
+    .pc-prix { font-family: var(--mono); font-size: .74rem; color: var(--caramel); padding: 3px 10px 0; }
+    .pc-badge, .ps-badge {
+      position: absolute; top: 8px; right: 8px; min-width: 27px; height: 27px; padding: 0 7px;
+      border-radius: 999px; background: var(--caramel); color: var(--noir);
+      font-weight: 900; font-size: .85rem; display: grid; place-items: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    }
+    .pos-sups { display: flex; flex-wrap: wrap; gap: 9px; }
+    .pos-sup {
+      position: relative; background: transparent; border: 1px solid rgba(244,237,224,.22);
+      border-radius: 999px; padding: 12px 18px; color: var(--ivoire);
+      font-family: var(--sans); font-size: .84rem; cursor: pointer;
+      user-select: none; -webkit-tap-highlight-color: transparent; transition: transform .08s, border-color .2s;
+    }
+    .pos-sup:active { transform: scale(.95); }
+    .pos-sup.in-cart { border-color: var(--caramel); }
+    .pos-sup em { font-style: normal; color: var(--caramel); font-weight: 600; }
+    .ps-badge { position: static; display: inline-grid; margin-left: 8px; vertical-align: middle; height: 22px; min-width: 22px; font-size: .74rem; }
+    .pos-cart {
+      width: 305px; flex: none; display: flex; flex-direction: column; gap: 10px;
+      border-left: 1px solid rgba(244,237,224,.1); padding-left: 18px; min-height: 0;
+    }
+    .pos-cart-h { font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; color: rgba(244,237,224,.55); }
+    .pos-cart-lines { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    .pos-empty { color: rgba(244,237,224,.4); font-weight: 300; font-size: .85rem; padding-top: 12px; }
+    .pcl { display: flex; align-items: center; gap: 8px; background: rgba(244,237,224,.04); border-radius: 12px; padding: 8px 10px; }
+    .pcl-name { flex: 1; font-size: .84rem; font-weight: 300; line-height: 1.2; }
+    .pcl-qty { display: inline-flex; align-items: center; gap: 2px; }
+    .pcl-qty button {
+      width: 36px; height: 36px; border: 1px solid rgba(244,237,224,.2); border-radius: 50%;
+      background: transparent; color: var(--ivoire); font-size: 1.1rem; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pcl-qty button:active { background: var(--caramel); color: var(--noir); }
+    .pcl-qty b { min-width: 24px; text-align: center; font-family: var(--mono); font-size: .9rem; }
+    .pcl-prix { font-family: var(--mono); font-size: .78rem; color: var(--caramel); white-space: nowrap; min-width: 58px; text-align: right; }
+    @media (max-width: 900px) {
+      .pos-main { flex-direction: column; }
+      .pos-cart { width: auto; border-left: none; padding-left: 0; border-top: 1px solid rgba(244,237,224,.1); padding-top: 12px; max-height: 45%; }
+      .pos-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+    }
     #m-note {
       background: rgba(244,237,224,.06); border: 1px solid rgba(244,237,224,.18);
       border-radius: 10px; color: var(--ivoire); font-family: var(--sans); font-weight: 300;
@@ -497,20 +548,26 @@
     <div class="hint">TOUCHER POUR FERMER · CHẠM ĐỂ ĐÓNG</div>
   </div>
 
-  <!-- modal commande sur place -->
+  <!-- modal commande sur place : caisse tactile -->
   <div id="modal" hidden>
-    <div class="modal-box">
+    <div class="modal-box pos-box">
       <div class="modal-head">
         <h2>Commande sur place<span class="vn vn-h2">Gọi món tại chỗ</span></h2>
         <button id="m-close" aria-label="Fermer">✕</button>
       </div>
-      <div id="cat-list" class="cat-list">Chargement…</div>
-      <input id="m-note" type="text" maxlength="400" placeholder="Note : nom du client, sans coriandre…">
-      <div class="m-foot">
-        <span class="m-total" id="m-total">0,00 €</span>
-        <button id="m-create" disabled>CRÉER LA COMMANDE</button>
+      <div class="pos-main">
+        <div id="cat-list" class="pos-grid-wrap">Chargement…</div>
+        <aside class="pos-cart">
+          <p class="pos-cart-h">PANIER · GIỎ HÀNG</p>
+          <div id="pos-lines" class="pos-cart-lines"><p class="pos-empty">Touchez un plat pour l'ajouter.</p></div>
+          <input id="m-note" type="text" maxlength="400" placeholder="Note : nom du client, sans coriandre…">
+          <div class="m-foot">
+            <span class="m-total" id="m-total">0,00 €</span>
+            <button id="m-create" disabled>CRÉER LA COMMANDE</button>
+          </div>
+          <p class="m-err" id="m-err" hidden></p>
+        </aside>
       </div>
-      <p class="m-err" id="m-err" hidden></p>
     </div>
   </div>
 
@@ -797,17 +854,62 @@
         renderCatalog();
       }
 
+      /* caisse tactile : image du plat (champ menu, sinon dérivée de l'id) */
+      function posImg(c) {
+        if (c.image) return c.image;
+        const slug = ['boeuf', 'poulet', 'crevette', 'veggie'].includes(c.id) ? 'bobun-' + c.id : c.id.replace(/_/g, '-');
+        return '/assets/plats/' + slug + '.webp';
+      }
+      function posCat(c) {
+        if (c.cat) return c.cat;
+        if (c.id.startsWith('loclac') || c.id === 'riz_cantonnais') return 'loclac';
+        if (c.id.startsWith('padthai') || c.id === 'mi_xao') return 'padthai';
+        if (['boeuf', 'poulet', 'crevette', 'veggie'].includes(c.id)) return 'bobun';
+        return 'entrees';
+      }
+      const POS_CATS = [['bobun', 'BO BÚN'], ['loclac', 'LOC LAC & RIZ'], ['padthai', 'PAD THAI & NOUILLES'], ['entrees', 'ENTRÉES'], ['special', 'SPÉCIAL VIÊT & SALADES']];
+
       function renderCatalog() {
-        $('#cat-list').innerHTML = catalog.map(c => `
-          <div class="cat-row ${c.sup ? 'sup' : ''}">
-            <span class="cat-name">${c.name}${(v => v ? `<span class="vn cat-vn">${v}</span>` : '')(vnItem(c.name))}</span>
-            <span class="cat-prix">${eur(c.amount)}</span>
-            <span class="cat-qty" data-id="${c.id}">
-              <button type="button" data-d="-1" aria-label="Retirer">−</button>
-              <span>${mQty[c.id] || 0}</span>
-              <button type="button" data-d="1" aria-label="Ajouter">+</button>
+        const dishes = catalog.filter(c => !c.sup);
+        const sups = catalog.filter(c => c.sup);
+        const card = c => `
+          <button type="button" class="pos-card" data-id="${c.id}">
+            <img src="${posImg(c)}" alt="" loading="lazy" onerror="this.remove()">
+            <span class="pc-badge" data-badge hidden></span>
+            <span class="pc-name">${c.name}</span>
+            ${(v => v ? `<span class="pc-vn">${v}</span>` : '')(c.name_vn || vnItem(c.name))}
+            <span class="pc-prix">${eur(c.amount)}</span>
+          </button>`;
+        let html = '';
+        for (const [cat, label] of POS_CATS) {
+          const list = dishes.filter(c => posCat(c) === cat);
+          if (list.length) html += `<p class="pos-cat-h">${label}</p><div class="pos-grid">${list.map(card).join('')}</div>`;
+        }
+        const rest = dishes.filter(c => !POS_CATS.some(([cat]) => posCat(c) === cat));
+        if (rest.length) html += `<p class="pos-cat-h">AUTRES</p><div class="pos-grid">${rest.map(card).join('')}</div>`;
+        if (sups.length) html += `<p class="pos-cat-h">SUPPLÉMENTS</p><div class="pos-sups">${sups.map(s =>
+          `<button type="button" class="pos-sup" data-id="${s.id}">${s.name.replace(/^Supplément\s+/i, '')} <em>+${eur(s.amount)}</em><span class="ps-badge" data-badge hidden></span></button>`).join('')}</div>`;
+        $('#cat-list').innerHTML = html;
+        renderPosCart();
+      }
+
+      function renderPosCart() {
+        const lines = catalog.filter(c => (mQty[c.id] || 0) > 0);
+        $('#pos-lines').innerHTML = lines.length ? lines.map(c => `
+          <div class="pcl" data-id="${c.id}">
+            <span class="pcl-name">${c.name}</span>
+            <span class="pcl-qty">
+              <button type="button" data-d="-1" aria-label="Retirer">−</button><b>${mQty[c.id]}</b><button type="button" data-d="1" aria-label="Ajouter">+</button>
             </span>
-          </div>`).join('');
+            <span class="pcl-prix">${eur(mQty[c.id] * c.amount)}</span>
+          </div>`).join('') : '<p class="pos-empty">Touchez un plat pour l\'ajouter.</p>';
+        // pastilles ×N sur les cards
+        document.querySelectorAll('#cat-list [data-id]').forEach(el => {
+          const q = mQty[el.dataset.id] || 0;
+          const b = el.querySelector('[data-badge]');
+          if (b) { b.hidden = !q; b.textContent = '×' + q; }
+          el.classList.toggle('in-cart', q > 0);
+        });
         updateModalTotal();
       }
 
@@ -820,13 +922,20 @@
       $('#new-order').addEventListener('click', openModal);
       $('#m-close').addEventListener('click', () => { $('#modal').hidden = true; });
       $('#modal').addEventListener('click', e => {
-        if (e.target.id === 'modal') $('#modal').hidden = true;
-        const btn = e.target.closest('.cat-qty button');
-        if (!btn) return;
-        const id = btn.closest('.cat-qty').dataset.id;
-        mQty[id] = Math.max(0, Math.min(30, (mQty[id] || 0) + (+btn.dataset.d)));
-        btn.closest('.cat-qty').querySelector('span').textContent = mQty[id];
-        updateModalTotal();
+        if (e.target.id === 'modal') { $('#modal').hidden = true; return; }
+        const qbtn = e.target.closest('.pcl-qty button');
+        if (qbtn) {
+          const id = qbtn.closest('.pcl').dataset.id;
+          mQty[id] = Math.max(0, Math.min(30, (mQty[id] || 0) + (+qbtn.dataset.d)));
+          renderPosCart();
+          return;
+        }
+        const card = e.target.closest('.pos-card, .pos-sup');
+        if (card) {
+          const id = card.dataset.id;
+          mQty[id] = Math.min(30, (mQty[id] || 0) + 1);
+          renderPosCart();
+        }
       });
 
       $('#m-create').addEventListener('click', async () => {
