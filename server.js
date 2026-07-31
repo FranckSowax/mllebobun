@@ -1402,6 +1402,46 @@ app.post('/api/orders/manual', checkKey, (req, res) => {
   }
 });
 
+/* commande depuis /menusurplace (QR à table) : PUBLIC, sans paiement.
+   Anti-abus : prénom requis + limite 3 commandes / 10 min / IP. */
+const tableOrders = new Map(); // ip -> [timestamps]
+app.post('/api/order/table', (req, res) => {
+  try {
+    const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim() || 'ip';
+    const now = Date.now();
+    const hits = (tableOrders.get(ip) || []).filter(t => t > now - 10 * 60 * 1000);
+    if (hits.length >= 3) return res.status(429).json({ error: 'Trop de commandes d’affilée — adressez-vous au comptoir 🙏' });
+
+    const { items, note, name } = req.body || {};
+    const cleanName = String(name || '').trim().slice(0, 40);
+    if (cleanName.length < 2) return res.status(400).json({ error: 'Indiquez votre prénom pour qu’on vous appelle.' });
+    const valid = (Array.isArray(items) ? items : [])
+      .filter(i => i && catItem(i.id) && Number.isInteger(i.qty) && i.qty > 0 && i.qty <= 20)
+      .slice(0, 25);
+    if (!valid.some(i => !catItem(i.id).sup)) return res.status(400).json({ error: 'Ajoutez au moins un plat.' });
+
+    hits.push(now);
+    tableOrders.set(ip, hits);
+    const d = new Date();
+    const order = {
+      id: 'sp' + d.getTime().toString(36),
+      sessionId: 'surplace_' + d.getTime().toString(36) + Math.random().toString(36).slice(2, 6),
+      code: pickupCode(),
+      date: d.toISOString(),
+      items: valid.map(i => ({ name: catItem(i.id).name, qty: i.qty, amount: catItem(i.id).amount * i.qty })),
+      amount: valid.reduce((s, i) => s + catItem(i.id).amount * i.qty, 0),
+      note: ('👤 ' + cleanName + (note ? ' · ' + String(note).slice(0, 300).trim() : '')).slice(0, 400),
+      phone: '', email: '',
+      status: 'sur place'
+    };
+    saveOrder(order); // dashboard temps réel + overlay + son + ticket imprimé
+    res.json({ ok: true, code: order.code });
+  } catch (e) {
+    console.error('order table:', e.message);
+    res.status(500).json({ error: 'erreur' });
+  }
+});
+
 app.get('/api/orders/stream', checkKey, (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
