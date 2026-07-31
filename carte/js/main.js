@@ -129,8 +129,7 @@
     activeTrack: null,   // piste du rail actuellement en scène
     activeAccent: '#E8912D',
     hotCard: null,       // card au centre (émettrice de vapeur)
-    velocity: 0,
-    skew: 0
+    velocity: 0
   };
 
   const tracks = [...document.querySelectorAll('.rail-track')];
@@ -237,7 +236,7 @@
       const t = Math.max(0, 1 - Math.min(Math.abs(d), 1));  // 1 au centre
       const scale = .94 + t * .14;
       const sat = .85 + t * .15;
-      card.style.transform = `scale(${scale.toFixed(4)}) skewX(${state.skew.toFixed(2)}deg)`;
+      card.style.transform = `scale(${scale.toFixed(4)})`;
       card.style.filter = `saturate(${sat.toFixed(3)})`;
       card.style.setProperty('--sh', t.toFixed(3));
       card.style.zIndex = t > .5 ? 2 : 1;
@@ -257,8 +256,6 @@
 
   function tick() {
     if (state.activeTrack && !REDUCED) stageTrack(state.activeTrack);
-    // décroissance du skew (retour élastique doux)
-    state.skew += (0 - state.skew) * .12;
     drawFx();
   }
 
@@ -274,10 +271,6 @@
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(t => {
       lenis.raf(t * 1000);
-      // vélocité → skew (clamp ±6°)
-      const v = lenis.velocity || 0;
-      const target = Math.max(-6, Math.min(6, v * .32));
-      state.skew += (target - state.skew) * .18;
       tick();
     });
     gsap.ticker.lagSmoothing(0);
