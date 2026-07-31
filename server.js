@@ -721,7 +721,10 @@ const WID_TO_DISH = {
   '36995525706729631': 'padthai-poulet', '27223951510638005': 'padthai-boeuf', '27788218260775045': 'padthai-crevette', '28863302836593573': 'mi-xao',
   '27902920422680039': 'nems', '27746997494931796': 'samoussa', '27870549665940779': 'raviolis-crevettes', '27980594338296747': 'goicuon-crevette',
   '27465779216422697': 'goicuon-boeuf', '27761145236812229': 'goicuon-veggie', '26942766625398026': 'ailes-poulet', '27755045017461245': 'banh-cuon',
-  '28389531647325708': 'boeuf-oignons', '27519868124309051': 'poulet-grille-viet', '27461466293511584': 'goi-tom-xoai', '27911793615112811': 'goi-ga'
+  '28389531647325708': 'boeuf-oignons', '27519868124309051': 'poulet-grille-viet', '27461466293511584': 'goi-tom-xoai', '27911793615112811': 'goi-ga',
+  '27943601641930128': 'coca', '27464856189851642': 'coca-zero', '28186619424361435': 'sprite', '28074100702198350': 'fuzetea-citron',
+  '28446166218301700': 'fuzetea-peche', '28240650342194414': 'perrier', '37657038983910019': 'vittel', '27771203242543896': 'jus-litchi',
+  '27775322102132893': 'jus-goyave', '27297916629886057': 'jus-coco', '37919693917628823': 'jus-mangue'
 };
 // id-produit WhatsApp -> { nom, cents } : nom/prix relus ici (jamais depuis le webhook = anti-manipulation)
 const WID_INFO = {
@@ -730,7 +733,10 @@ const WID_INFO = {
   '36995525706729631': { nom: 'Pad Thai Poulet', cents: 1200 }, '27223951510638005': { nom: 'Pad Thai Bœuf', cents: 1200 }, '27788218260775045': { nom: 'Pad Thai Crevette', cents: 1300 }, '28863302836593573': { nom: 'Mi Xao', cents: 1300 },
   '27902920422680039': { nom: 'Nems Poulet / Veggie', cents: 600 }, '27746997494931796': { nom: 'Samoussa Poulet / Légumes', cents: 600 }, '27870549665940779': { nom: 'Raviolis Frits aux Crevettes', cents: 600 }, '27980594338296747': { nom: 'Gỏi Cuốn Crevette', cents: 700 },
   '27465779216422697': { nom: 'Gỏi Cuốn Bœuf / Poulet', cents: 650 }, '27761145236812229': { nom: 'Gỏi Cuốn Veggie', cents: 600 }, '26942766625398026': { nom: 'Ailes de Poulet', cents: 700 }, '27755045017461245': { nom: 'Bánh Cuốn', cents: 750 },
-  '28389531647325708': { nom: 'Bœuf aux Oignons', cents: 1200 }, '27519868124309051': { nom: 'Poulet Grillé Façon Viêt', cents: 1200 }, '27461466293511584': { nom: 'Gỏi Tôm Xoài', cents: 900 }, '27911793615112811': { nom: 'Gỏi Gà', cents: 800 }
+  '28389531647325708': { nom: 'Bœuf aux Oignons', cents: 1200 }, '27519868124309051': { nom: 'Poulet Grillé Façon Viêt', cents: 1200 }, '27461466293511584': { nom: 'Gỏi Tôm Xoài', cents: 900 }, '27911793615112811': { nom: 'Gỏi Gà', cents: 800 },
+  '27943601641930128': { nom: 'Coca-Cola', cents: 200 }, '27464856189851642': { nom: 'Coca-Cola Zéro', cents: 200 }, '28186619424361435': { nom: 'Sprite', cents: 200 }, '28074100702198350': { nom: 'Fuze Tea Citron', cents: 200 },
+  '28446166218301700': { nom: 'Fuze Tea Pêche', cents: 200 }, '28240650342194414': { nom: 'Perrier', cents: 200 }, '37657038983910019': { nom: 'Vittel', cents: 200 }, '27771203242543896': { nom: 'Jus de Litchi', cents: 250 },
+  '27775322102132893': { nom: 'Jus de Goyave', cents: 250 }, '27297916629886057': { nom: 'Jus de Coco', cents: 250 }, '37919693917628823': { nom: 'Jus de Mangue', cents: 250 }
 };
 
 // récupère le détail d'un panier natif WhatsApp via son token (à appeler À CHAUD — les tokens expirent vite)
