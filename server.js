@@ -761,7 +761,7 @@ function railToStore(railId) {
 const pendingCart = new Map();
 
 // paiement du TOTAL d'un panier WhatsApp (on n'a pas le détail des plats, seulement le montant)
-async function createCartCheckout(from, pc, mode, upsellNems) {
+async function createCartCheckout(from, pc, mode) {
   if (!stripe) return null;
   const drive = mode === 'drive';
   const code = pickupCode();
@@ -775,7 +775,10 @@ async function createCartCheckout(from, pc, mode, upsellNems) {
     line_items = [{ quantity: 1, price_data: { currency: 'eur', unit_amount: pc.cents, product_data: { name: `Commande WhatsApp — ${pc.count} article${pc.count > 1 ? 's' : ''}` } } }];
     note = 'Panier WhatsApp — détail visible dans l’app WhatsApp Business';
   }
-  if (upsellNems) { line_items.push({ quantity: 1, price_data: { currency: 'eur', unit_amount: 300, product_data: { name: 'Supplément 2 nems' } } }); note += ' · +2 nems'; }
+  for (const x of (pc.extras || [])) {
+    line_items.push({ quantity: 1, price_data: { currency: 'eur', unit_amount: x.cents, product_data: { name: x.name } } });
+    note += ' · +' + x.name;
+  }
   const total = line_items.reduce((s, li) => s + li.price_data.unit_amount * li.quantity, 0);
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', locale: 'fr', submit_type: 'pay', line_items,
@@ -1021,41 +1024,50 @@ async function handleWhapiBody(body) {
         continue;
       }
 
-      // Étape 1 : mode de retrait -> propose l'upsell
-      if (!pc.mode) {
-        const mode = (/drive|voiture|gar[ée]/.test(bid + ' ' + bt) || bid.endsWith(':1')) ? 'drive'
-          : (/emporter/.test(bid + ' ' + bt) || bid.endsWith(':0')) ? 'emporter' : null;
-        if (mode) {
-          pc.mode = mode; pc.at = now;
-          const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
-          try {
-            await whapi('/messages/interactive', {
-              to: from, type: 'button',
-              body: { text: '🥟 Un petit plus ? Nos *nems maison* sont notre best-seller — on en ajoute 2 pour *+3 €* ?' },
-              action: { buttons: [
-                { type: 'quick_reply', title: '🥟 Oui, +2 nems', id: 'up_nems' },
-                { type: 'quick_reply', title: `💳 Payer ${eurTxt} €`, id: 'up_pay' }
-              ] }
-            });
-          } catch (e) {
-            await whapi('/messages/text', { to: from, body: 'Un petit plus ? Répondez « nems » pour ajouter 2 nems (+3 €), ou « payer » pour continuer.' }).catch(() => {});
-          }
-          continue;
-        }
-        // input non reconnu -> laisse le concierge répondre (le panier reste en attente)
-      }
+      // boissons proposables (Supabase), triées premium d'abord — max 9 (limite 10 lignes WhatsApp avec « Non merci »)
+      const drinksList = () => Object.values(effectiveCatalog())
+        .filter(c => c.cat === 'boissons' && !c.sup && c.active !== false)
+        .sort((a, b) => b.amount - a.amount || (a.sort || 0) - (b.sort || 0))
+        .slice(0, 9);
 
-      // Étape 2 : réponse à l'upsell -> paiement du total
-      else if (btn || /nems|payer|oui|non/.test(bt)) {
-        const addNems = /nems|oui/.test(bid + ' ' + bt) || bid.endsWith(':0');
+      // envoie l'upsell boisson (liste interactive, repli 3 boutons)
+      const sendDrinkUpsell = async () => {
+        const ds = drinksList();
+        if (!ds.length) return false;
+        const rows = ds.map(d => ({ id: 'drk_' + d.id, title: d.name.slice(0, 24), description: (d.amount / 100).toFixed(2).replace('.', ',') + ' €' }));
+        rows.push({ id: 'drk_none', title: 'Non merci', description: 'Continuer vers le paiement' });
+        try {
+          await whapi('/messages/interactive', {
+            to: from, type: 'list',
+            body: { text: '🥤 Une boisson fraîche avec ça ?' },
+            action: { list: { label: 'Choisir une boisson', sections: [{ title: 'Nos boissons', rows }] } }
+          });
+        } catch (e) {
+          const two = ds.slice(0, 2);
+          await whapi('/messages/interactive', {
+            to: from, type: 'button',
+            body: { text: '🥤 Une boisson fraîche avec ça ?' },
+            action: { buttons: [
+              ...two.map(d => ({ type: 'quick_reply', title: `${d.name.slice(0, 17)} ${(d.amount / 100).toFixed(2).replace('.', ',')}€`.slice(0, 24), id: 'drk_' + d.id })),
+              { type: 'quick_reply', title: 'Non merci', id: 'drk_none' }
+            ] }
+          }).catch(() => {});
+          pc.drinkFallback = two.map(d => d.id); // mapping ButtonsV3 index -> boisson
+        }
+        return true;
+      };
+
+      // paiement (avec les extras nems/boisson accumulés)
+      const goCheckout = async () => {
         const mode = pc.mode;
         pendingCart.delete(from);
         await whapi('/messages/text', { to: from, body: '⏳ Je prépare votre paiement sécurisé, un petit instant…' }).catch(() => {});
         try {
-          const co = await createCartCheckout(from, pc, mode, addNems);
+          const co = await createCartCheckout(from, pc, mode);
           if (co && co.url) {
             const eurTxt = (co.total / 100).toFixed(2).replace('.', ',');
-            const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})${addNems ? ' · +2 nems' : ''}\n`
+            const extras = (pc.extras || []).map(x => x.name).join(' · ');
+            const body = `🍜 Votre commande — *${eurTxt} €* (${mode === 'drive' ? 'Drive' : 'À emporter'})${extras ? '\n➕ ' + extras : ''}\n`
               + `Paiement sécurisé Stripe · vous recevrez votre code de retrait ici même 🙌`
               + (mode === 'drive' ? '\n🚗 Après paiement, décrivez votre véhicule.' : '');
             try {
@@ -1075,6 +1087,65 @@ async function handleWhapiBody(body) {
           console.error('cart checkout:', e.message);
           await whapi('/messages/text', { to: from, body: `Commandez et payez ici 👉 ${SITE()}` }).catch(() => {});
         }
+      };
+
+      // Étape 1 : mode de retrait -> upsell nems
+      if (!pc.mode) {
+        const mode = (/drive|voiture|gar[ée]/.test(bid + ' ' + bt) || bid.endsWith(':1')) ? 'drive'
+          : (/emporter/.test(bid + ' ' + bt) || bid.endsWith(':0')) ? 'emporter' : null;
+        if (mode) {
+          pc.mode = mode; pc.at = now; pc.extras = [];
+          const eurTxt = (pc.cents / 100).toFixed(2).replace('.', ',');
+          try {
+            await whapi('/messages/interactive', {
+              to: from, type: 'button',
+              body: { text: '🥟 Un petit plus ? Nos *nems maison* sont notre best-seller — on en ajoute 2 pour *+3 €* ?' },
+              action: { buttons: [
+                { type: 'quick_reply', title: '🥟 Oui, +2 nems', id: 'up_nems' },
+                { type: 'quick_reply', title: `Continuer (${eurTxt} €)`, id: 'up_pay' }
+              ] }
+            });
+          } catch (e) {
+            await whapi('/messages/text', { to: from, body: 'Un petit plus ? Répondez « nems » pour ajouter 2 nems (+3 €), ou « continuer ».' }).catch(() => {});
+          }
+          continue;
+        }
+        // input non reconnu -> laisse le concierge répondre (le panier reste en attente)
+      }
+
+      // Étape 3 : réponse à l'upsell boisson -> paiement
+      else if (pc.drinkStage) {
+        let drinkId = null;
+        if (bid.startsWith('drk_')) drinkId = bid.slice(4);
+        else if (pc.drinkFallback && /^ButtonsV3:\d+$/.test(bid)) {
+          const idx = +bid.split(':')[1];
+          drinkId = idx < pc.drinkFallback.length ? pc.drinkFallback[idx] : 'none';
+        } else {
+          // repli par nom (réponse texte ou titre de ligne)
+          const hit = drinksList().find(d => bt.includes(d.name.toLowerCase()));
+          if (hit) drinkId = hit.id;
+          else if (/non|merci|payer|continuer/.test(bt)) drinkId = 'none';
+        }
+        if (drinkId === null) continue; // message non lié -> on attend
+        if (drinkId !== 'none') {
+          const d = catItem(drinkId);
+          if (d && !d.sup) (pc.extras || (pc.extras = [])).push({ name: d.name, cents: d.amount });
+        }
+        await goCheckout();
+        continue;
+      }
+
+      // Étape 2 : réponse à l'upsell nems -> upsell boisson (puis paiement si pas de boissons)
+      else if (btn || /nems|payer|oui|non|continuer/.test(bt)) {
+        const addNems = /up_nems|nems|oui/.test(bid + ' ' + bt) || bid.endsWith(':0');
+        if (addNems) {
+          const n = catItem('sup_nems');
+          (pc.extras || (pc.extras = [])).push({ name: (n && n.name) || 'Supplément 2 nems', cents: (n && n.amount) || 300 });
+        }
+        pc.at = now;
+        pc.drinkStage = true;
+        const sent = await sendDrinkUpsell();
+        if (!sent) await goCheckout(); // pas de boissons au menu -> paiement direct
         continue;
       }
     }
