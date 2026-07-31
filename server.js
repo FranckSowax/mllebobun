@@ -1323,7 +1323,7 @@ app.post('/api/menu', checkKey, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Le nom est requis.' });
     const amount = Math.max(0, Math.round(Number(b.amount) || 0));
     const row = {
-      id, cat: ['bobun', 'loclac', 'padthai', 'entrees', 'special', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
+      id, cat: ['bobun', 'loclac', 'padthai', 'entrees', 'special', 'boissons', 'supplement'].includes(b.cat) ? b.cat : 'bobun',
       name, name_vn: String(b.name_vn || '').slice(0, 80),
       description: String(b.description || '').slice(0, 400),
       amount, image: String(b.image || '').slice(0, 400),

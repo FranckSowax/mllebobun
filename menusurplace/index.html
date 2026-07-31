@@ -140,6 +140,29 @@
     .up-opt .ic { font-size: 1.3rem; }
     .up-opt em { font-style: normal; color: var(--caramel); font-weight: 700; margin-left: auto; white-space: nowrap; }
     .btn-ghost { background: transparent; border: none; color: rgba(244,237,224,.6); font-family: var(--mono); font-size: .62rem; letter-spacing: .12em; padding: 10px; cursor: pointer; width: 100%; }
+    .up-drinks {
+      display: flex; gap: 9px; overflow-x: auto; padding: 2px 2px 6px;
+      -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; scrollbar-width: none;
+    }
+    .up-drinks::-webkit-scrollbar { display: none; }
+    .up-drink {
+      flex: none; width: 96px; scroll-snap-align: start; text-align: center;
+      background: rgba(244,237,224,.045); border: 1px solid rgba(244,237,224,.14); border-radius: 13px;
+      padding: 0 0 8px; color: var(--ivoire); font-family: var(--sans); cursor: pointer; user-select: none;
+      overflow: hidden; transition: border-color .2s, transform .08s; position: relative;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .up-drink:active { transform: scale(.94); }
+    .up-drink.on { border-color: var(--caramel); background: rgba(232,145,45,.12); }
+    .up-drink img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; margin-bottom: 3px; }
+    .up-drink .n { font-size: .68rem; font-weight: 600; line-height: 1.15; padding: 0 6px; }
+    .up-drink .p { font-family: var(--mono); font-size: .66rem; color: var(--caramel); }
+    .up-drink .ok {
+      position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--caramel); color: var(--noir); font-weight: 900; font-size: .8rem;
+      display: none; place-items: center;
+    }
+    .up-drink.on .ok { display: grid; }
 
     /* succès */
     .done { text-align: center; padding: 12px 0 6px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
@@ -196,6 +219,8 @@
       <p class="up-title">Un petit plus ? 🥢</p>
       <p class="up-sub">Nos best-sellers pour accompagner votre commande :</p>
       <div class="up-grid" id="up-grid"></div>
+      <p class="up-sub" id="up-drinks-h" hidden>Une boisson fraîche ? 🥤</p>
+      <div class="up-drinks" id="up-drinks"></div>
       <button class="btn-main" id="up-send">Envoyer votre commande en cuisine</button>
       <button class="btn-ghost" data-close>NON MERCI, JUSTE MA COMMANDE</button>
       <p class="err" id="up-err" hidden></p>
@@ -220,7 +245,7 @@
     'use strict';
     const $ = s => document.querySelector(s);
     const eur = c => (c / 100).toFixed(2).replace('.', ',') + ' €';
-    const CATS = [['bobun', 'NOS BO BÚN'], ['loclac', 'LOC LAC & RIZ'], ['padthai', 'PAD THAI & NOUILLES'], ['entrees', 'ENTRÉES'], ['special', 'SPÉCIAL VIÊT & SALADES']];
+    const CATS = [['bobun', 'NOS BO BÚN'], ['loclac', 'LOC LAC & RIZ'], ['padthai', 'PAD THAI & NOUILLES'], ['entrees', 'ENTRÉES'], ['special', 'SPÉCIAL VIÊT & SALADES'], ['boissons', 'BOISSONS']];
     const qty = {};   // id -> quantité
     let items = [];
 
@@ -316,19 +341,28 @@
     }
     function openUpsell() {
       const opts = upsellChoices();
-      if (!opts.length) { send(); return; }
+      const drinks = items.filter(i => i.cat === 'boissons' && !qty[i.id]);
+      if (!opts.length && !drinks.length) { send(); return; }
       $('#up-grid').innerHTML = opts.map(c => `
         <button type="button" class="up-opt" data-id="${c.id}">
           <span class="ic">${UP_ICONS[c.id] || '➕'}</span>
           <span>${c.name}</span>
           <em>${c.sup ? '+' : ''}${eur(c.amount)}</em>
         </button>`).join('');
+      $('#up-drinks-h').hidden = !drinks.length;
+      $('#up-drinks').innerHTML = drinks.map(c => `
+        <button type="button" class="up-drink" data-id="${c.id}">
+          ${c.image ? `<img src="${c.image}" alt="" loading="lazy" onerror="this.remove()">` : '<span style="font-size:2rem;padding:16px 0 4px">🥤</span>'}
+          <span class="ok">✓</span>
+          <span class="n">${c.name}</span>
+          <span class="p">${eur(c.amount)}</span>
+        </button>`).join('');
       $('#up-err').hidden = true;
       $('#cart-sheet').hidden = true;
       $('#up-sheet').hidden = false;
     }
-    $('#up-grid') && $('#up-sheet').addEventListener('click', e => {
-      const opt = e.target.closest('.up-opt');
+    $('#up-sheet').addEventListener('click', e => {
+      const opt = e.target.closest('.up-opt, .up-drink');
       if (!opt) return;
       const id = opt.dataset.id;
       if (qty[id]) { delete qty[id]; opt.classList.remove('on'); }

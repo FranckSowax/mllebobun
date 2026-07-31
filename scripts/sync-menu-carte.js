@@ -25,7 +25,20 @@ const NEW_DISHES = [
   { id: 'boeuf_oignons', cat: 'special', name: 'Bœuf aux Oignons', name_vn: 'Bò xào hành tây', amount: 1200, sort: 50, description: 'Émincés de bœuf sautés oignons & poivrons au wok, sauce secrète, servis avec riz blanc.' },
   { id: 'poulet_grille_viet', cat: 'special', name: 'Poulet Grillé Façon Viêt', name_vn: 'Gà nướng', amount: 1200, sort: 51, description: 'Poulet mariné sauce maison, grillé façon vietnamienne, servi avec riz blanc.' },
   { id: 'goi_tom_xoai', cat: 'special', name: 'Gỏi Tôm Xoài', name_vn: 'Gỏi tôm xoài', amount: 900, sort: 52, description: 'Salade de papaye, mangue, oignons, carottes râpées, cacahuète & oignons frits, accompagnée de crevettes marinées.' },
-  { id: 'goi_ga', cat: 'special', name: 'Gỏi Gà', name_vn: 'Gỏi gà', amount: 800, sort: 53, description: 'Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits & cacahuète.' }
+  { id: 'goi_ga', cat: 'special', name: 'Gỏi Gà', name_vn: 'Gỏi gà', amount: 800, sort: 53, description: 'Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits & cacahuète.' },
+  /* boissons : 2 € — jus litchi/goyave/coco/mangue 2,50 € — bière Saigon 3 € */
+  { id: 'coca', cat: 'boissons', name: 'Coca-Cola', name_vn: '', amount: 200, sort: 60, description: '33 cl.' },
+  { id: 'coca_zero', cat: 'boissons', name: 'Coca-Cola Zéro', name_vn: '', amount: 200, sort: 61, description: '33 cl.' },
+  { id: 'sprite', cat: 'boissons', name: 'Sprite', name_vn: '', amount: 200, sort: 62, description: '33 cl.' },
+  { id: 'fuzetea_citron', cat: 'boissons', name: 'Fuze Tea Citron', name_vn: '', amount: 200, sort: 63, description: 'Thé glacé citron.' },
+  { id: 'fuzetea_peche', cat: 'boissons', name: 'Fuze Tea Pêche', name_vn: '', amount: 200, sort: 64, description: 'Thé glacé pêche.' },
+  { id: 'perrier', cat: 'boissons', name: 'Perrier', name_vn: '', amount: 200, sort: 65, description: 'Eau pétillante 33 cl.' },
+  { id: 'vittel', cat: 'boissons', name: 'Vittel', name_vn: '', amount: 200, sort: 66, description: 'Eau minérale 50 cl.' },
+  { id: 'jus_litchi', cat: 'boissons', name: 'Jus de Litchi', name_vn: 'Nước vải', amount: 250, sort: 67, description: 'Jus de litchi.' },
+  { id: 'jus_goyave', cat: 'boissons', name: 'Jus de Goyave', name_vn: 'Nước ổi', amount: 250, sort: 68, description: 'Jus de goyave.' },
+  { id: 'jus_coco', cat: 'boissons', name: 'Jus de Coco', name_vn: 'Nước dừa', amount: 250, sort: 69, description: 'Jus de coco.' },
+  { id: 'jus_mangue', cat: 'boissons', name: 'Jus de Mangue', name_vn: 'Nước xoài', amount: 250, sort: 70, description: 'Jus de mangue.' },
+  { id: 'biere_saigon', cat: 'boissons', name: 'Bière Saigon', name_vn: 'Bia Sài Gòn', amount: 300, sort: 71, description: 'Bière vietnamienne 33 cl.', image: '' }
 ];
 
 (async () => {
@@ -47,6 +60,6 @@ const NEW_DISHES = [
     await post({ id, cat: it.cat, name: it.name, name_vn: it.name_vn || '', description: it.description || '',
       amount, image: it.image || '', active: it.active !== false, sort: it.sort || 0 });
   }
-  for (const d of NEW_DISHES) await post({ ...d, image: '/assets/plats/' + d.id.replace(/_/g, '-') + '.webp', active: true });
+  for (const d of NEW_DISHES) await post({ ...d, image: d.image !== undefined ? d.image : '/assets/plats/' + d.id.replace(/_/g, '-') + '.webp', active: true });
   console.log('\n=== ok:', ok, '/ 22 · échecs:', ko.join(',') || '—');
 })();
