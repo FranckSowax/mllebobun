@@ -437,7 +437,7 @@
         <div class="tools-menu" role="menu">
           <a class="bt-btn demo-link" href="/demo.html" target="_blank" title="Simuler une commande (workflow)">🧪 SIMULER</a>
           <button id="purge-demo" class="bt-btn" title="Supprimer toutes les commandes démo">🧹 PURGER DÉMOS</button>
-          <a class="bt-btn" href="/bobun-print.html" target="_blank" title="Ouvrir le Print Agent (impression locale)">🖨 PRINT AGENT</a>
+          <span id="printer-badge" class="bt-btn" title="Etat du Print Server local">🖨 IMPRIMANTE...</span>
           <button id="chatbot-toggle" class="bt-btn chatbot-btn" title="Activer / désactiver le concierge WhatsApp">🤖 CHATBOT<span class="vn vn-btn">Trợ lý</span></button>
           <label class="autop"><input type="checkbox" id="autoprint" checked> IMPRESSION AUTO</label>
         </div>
@@ -779,30 +779,82 @@
       function stopAlert() { if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; } }
 
       /* ============================================================
-         IMPRESSION : via Print Agent (bobun-print.html)
-         Le dashboard est en HTTPS (Railway) et ne peut pas appeler
-         l'imprimante locale en HTTP (mixed content bloque).
-         Le Print Agent tourne en page locale et gere l'impression.
-         Le bouton ci-dessous redirige vers le Print Agent.
+         IMPRESSION via Print Server local (http://localhost:3333)
+         Chrome autorise HTTPS -> http://localhost (pas de mixed content)
          ============================================================ */
 
-      /* icone imprimante sur chaque ligne -> re-impression via print-agent */
+      const PRINT_SERVER = 'http://localhost:3333';
+      let printerReady = false;
+
+      // detection du Print Server local
+      function checkPrintServer() {
+        fetch(PRINT_SERVER + '/status', { signal: AbortSignal.timeout(2000) })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            printerReady = d.ok;
+            var badge = $('#printer-badge');
+            if (d.ok) {
+              badge.className = 'bt-btn on';
+              badge.textContent = '🖨 IMPRIMANTE OK';
+              badge.title = 'Connectee : ' + d.printer;
+            } else {
+              badge.className = 'bt-btn';
+              badge.textContent = '🖨 IMPRIMANTE HS';
+              badge.title = d.error || 'Non joignable';
+            }
+          })
+          .catch(function() {
+            printerReady = false;
+            var badge = $('#printer-badge');
+            badge.className = 'bt-btn';
+            badge.textContent = '🖨 PRINT SERVER OFF';
+            badge.title = 'Lancez print-server.js sur le PC du restaurant';
+          });
+      }
+      checkPrintServer();
+      setInterval(checkPrintServer, 15000);
+
+      // clic sur le bouton imprimante d'une commande
       $('#rows').addEventListener('click', function(e) {
         var btn = e.target.closest('.print-btn');
         if (!btn) return;
         var sid = btn.dataset.sid;
+        var o = all.find(function(x) { return x.sessionId === sid; });
+        if (!o) return;
+
+        if (!printerReady) {
+          // fallback : envoie au serveur Railway (pour le print-agent polling)
+          btn.disabled = true;
+          fetch('/api/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Dash-Key': KEY },
+            body: JSON.stringify({ sessionId: sid })
+          }).then(function(r) {
+            if (!r.ok) throw new Error('Erreur');
+            btn.classList.add('done');
+            setTimeout(function() { btn.classList.remove('done'); }, 2000);
+          }).catch(function() {
+            alert('Lancez le Print Server sur le PC du restaurant :\n\n  node print-server.js --key CLE');
+          }).finally(function() { btn.disabled = false; });
+          return;
+        }
+
+        // impression directe via le Print Server local
         btn.disabled = true;
-        fetch('/api/print', {
+        fetch(PRINT_SERVER + '/print', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Dash-Key': KEY },
-          body: JSON.stringify({ sessionId: sid })
-        }).then(function(r) {
-          if (!r.ok) throw new Error('Erreur ' + r.status);
-          btn.classList.add('done');
-          setTimeout(function() { btn.classList.remove('done'); }, 2000);
-        }).catch(function(err) {
-          alert('Impression : ' + err.message + '\nVerifiez que le Print Agent tourne.');
-        }).finally(function() { btn.disabled = false; });
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(o)
+        }).then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.ok) throw new Error(d.error || 'Echec');
+            btn.classList.add('done');
+            setTimeout(function() { btn.classList.remove('done'); }, 2000);
+          })
+          .catch(function(err) {
+            alert('Erreur impression : ' + err.message);
+          })
+          .finally(function() { btn.disabled = false; });
       });
 
       /* ---- overlay bleu : client en drive ---- */
