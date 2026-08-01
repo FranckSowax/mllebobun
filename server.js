@@ -707,12 +707,6 @@ app.post('/api/drive', async (req, res) => {
 /* ---------- Menu via sondage (poll) : la carte + réponse auto au vote ---------- */
 
 const SITE = () => PUBLIC_URL || 'https://mllebobun-production.up.railway.app';
-// lien profond : ouvre la page de commande avec le plat déjà dans le panier (prêt à payer)
-function orderUrl(dish) {
-  const page = dishPage(dish ? dish.cat : '');
-  const hasCart = page !== '/';
-  return SITE() + page + (hasCart && dish && dish.id ? '?add=' + encodeURIComponent(dish.id) : '');
-}
 
 // panier natif WhatsApp : id-produit WhatsApp (Whapi) -> id-plat du catalogue (rails)
 const WID_TO_DISH = {
@@ -820,20 +814,24 @@ function menuDishes() {
 
 const recentCard = new Map(); // "from|dishId" -> ts (anti double-envoi)
 
-// bouton « Commander » (URL) avec repli lien texte
-async function sendOrderButton(to, url, dishId) {
+// lien qui ouvre DIRECTEMENT le catalogue WhatsApp du resto
+const WA_CATALOG_LINK = 'https://wa.me/c/33770271688';
+
+// bouton « Voir le menu » -> ouvre le catalogue WhatsApp (repli lien texte)
+async function sendMenuButton(to, intro) {
+  const body = intro || '📋 Notre menu complet — photos et prix à jour.\nChoisissez vos plats et *envoyez-moi votre panier*, je m’occupe du reste 😊';
   await whapi('/messages/interactive', {
     to, type: 'button',
-    body: { text: '🛒 Prêt à commander ? Paiement en ligne, retrait sur place.' },
+    body: { text: body },
     footer: { text: 'Mademoiselle Bobùn' },
-    action: { buttons: [{ type: 'url', title: '🛒 Commander', id: `order_${dishId || 'menu'}`, url }] }
+    action: { buttons: [{ type: 'url', title: '📋 Voir le menu', id: 'menu', url: WA_CATALOG_LINK }] }
   }).catch(async e => {
-    console.error('bouton commander:', e.message);
-    await whapi('/messages/text', { to, body: `👉 Commander : ${url}` }).catch(() => {});
+    console.error('bouton menu:', e.message);
+    await whapi('/messages/text', { to, body: `${body}\n👉 ${WA_CATALOG_LINK}` }).catch(() => {});
   });
 }
 
-// fiche plat : photo + prix + description, PUIS un bouton « Commander »
+// fiche plat : photo + prix + description, PUIS le bouton « Voir le menu » (catalogue)
 async function sendDishCard(to, dish) {
   const key = to + '|' + dish.id;
   const now = Date.now();
@@ -846,14 +844,12 @@ async function sendDishCard(to, dish) {
   } else {
     await whapi('/messages/text', { to, body: caption }).catch(() => {});
   }
-  await sendOrderButton(to, orderUrl(dish), dish.id);
+  await sendMenuButton(to, '🛒 Envie de celui-ci ? Ajoutez-le à votre panier depuis le menu 👇');
 }
 
-// la carte en texte (liste des plats + prix)
+// la carte -> on ouvre le catalogue WhatsApp (plus de liste texte ni de liens produits)
 async function sendCarte(to) {
-  const lines = menuDishes().map(d => `${dishEmoji(d.id)} *${d.name}* — ${centsEur(d.amount)}`).join('\n');
-  const body = `📋 *Notre carte*\n\n${lines}\n\nDites-moi le plat qui vous tente, je vous envoie la photo et le lien pour commander 😊`;
-  return whapi('/messages/text', { to, body }).catch(() => {});
+  return sendMenuButton(to);
 }
 
 /* ---------- Concierge IA (Mistral) : comprend un message libre et répond ---------- */
@@ -874,8 +870,8 @@ function conciergeTools() {
     ({ type: 'function', function: { name, description, parameters: { type: 'object', properties: properties || {}, required: required || [] } } });
   return [
     f('montrer_plat', 'Envoyer la photo, le prix et le lien de commande d’un plat précis que le client demande.', { dish_id: { type: 'string', enum: ids } }, ['dish_id']),
-    f('montrer_carte', 'Envoyer la carte complète (le client demande le menu, ce qu’on propose, ou hésite).'),
-    f('envoyer_lien_commande', 'Envoyer le lien pour commander/payer en ligne (le client veut commander).', { dish_id: { type: 'string', enum: ids } }),
+    f('montrer_carte', 'Envoyer le bouton « Voir le menu » qui ouvre le catalogue WhatsApp (le client demande le menu, ce qu’on propose, ou hésite).'),
+    f('envoyer_lien_commande', 'Envoyer le bouton « Voir le menu » (catalogue WhatsApp) pour que le client compose son panier (le client veut commander).', { dish_id: { type: 'string', enum: ids } }),
     f('parler_a_humain', 'Transférer à l’équipe UNIQUEMENT pour : réclamation, problème de commande, allergie sérieuse, ou demande vraiment hors sujet.', { resume: { type: 'string' } }, ['resume']),
     f('repondre', 'Répondre par un court message : horaires, adresse, téléphone, livraison, mode de retrait, salutation. Ne donne jamais de prix de plat ici.', { message: { type: 'string' } }, ['message'])
   ];
@@ -901,8 +897,8 @@ function conciergeSystemPrompt() {
     + `Règles :\n`
     + `- Comprends l'intention du client et APPELLE UN OUTIL.\n`
     + `- Un plat précis demandé -> montrer_plat (bon dish_id).\n`
-    + `- Demande de carte / « vous avez quoi » / hésitation -> montrer_carte.\n`
-    + `- Veut commander/payer -> envoyer_lien_commande (avec dish_id si un plat est clair).\n`
+    + `- Demande de carte / « vous avez quoi » / hésitation -> montrer_carte (ouvre le catalogue WhatsApp).\n`
+    + `- Veut commander/payer -> envoyer_lien_commande : le client compose son panier dans le menu WhatsApp et l'envoie ici. Ne promets JAMAIS un lien de site ou de produit.\n`
     + `- Horaires, adresse, téléphone, livraison, mode de retrait, salutation -> repondre (avec les infos pratiques ci-dessus).\n`
     + `- Seulement si réclamation, problème de commande, allergie sérieuse, ou demande vraiment hors sujet -> parler_a_humain.\n`
     + `- Ne donne JAMAIS un prix toi-même : pour un plat, utilise montrer_plat (le prix est ajouté automatiquement).`;
@@ -932,8 +928,7 @@ async function conciergeReply(from, text) {
   if (name === 'montrer_plat' && byId[args.dish_id]) {
     await sendDishCard(from, byId[args.dish_id]);
   } else if (name === 'envoyer_lien_commande') {
-    const d = byId[args.dish_id];
-    await sendOrderButton(from, d ? orderUrl(d) : SITE() + '/bobunbeef/', d && d.id);
+    await sendMenuButton(from, '🛒 Pour commander : ouvrez le menu, composez votre panier et *envoyez-le moi* — je vous guide ensuite pour le retrait et le paiement 😊');
   } else if (name === 'parler_a_humain') {
     await whapi('/messages/text', { to: from, body: 'Je transmets tout de suite à l’équipe, on revient vers vous très vite 🙏\nBesoin urgent ? Appelez-nous au 05 57 95 54 39.' }).catch(() => {});
     if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `🔔 *Message client à traiter*\n_Tin nhắn khách cần xử lý_\n\n👤 +${from}\n« ${text.slice(0, 300)} »${args.resume ? '\n📝 ' + args.resume : ''}` }).catch(() => {});
