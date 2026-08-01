@@ -1263,6 +1263,34 @@ app.post('/api/orders/purge-demo', checkKey, async (req, res) => {
   }
 });
 
+/* suppression de commandes par sessionIds */
+app.post('/api/orders/purge', checkKey, async (req, res) => {
+  try {
+    const { sessionIds } = req.body || {};
+    if (!Array.isArray(sessionIds) || !sessionIds.length) return res.status(400).json({ error: 'sessionIds requis' });
+    const before = orders.length;
+    const toDelete = new Set(sessionIds);
+    orders = orders.filter(o => !toDelete.has(o.sessionId));
+    const removed = before - orders.length;
+    // réécrit le fichier JSONL
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(ORDERS_FILE, orders.map(o => JSON.stringify(o)).join('\n') + (orders.length ? '\n' : ''));
+    } catch (e) { console.error('purge fichier:', e.message); }
+    // supprime dans Supabase
+    if (sb) {
+      const { error } = await sb.from('orders').delete().in('session_id', sessionIds);
+      if (error) console.error('purge supabase:', error.message);
+    }
+    broadcast('purge', { sessionIds, removed });
+    console.log('purge:', removed, 'commande(s) supprimée(s)');
+    res.json({ ok: true, removed });
+  } catch (e) {
+    console.error('purge:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* traduction des notes clients (fr → vi) pour la cuisine — cache mémoire */
 const trCache = new Map();
 app.get('/api/translate', checkKey, async (req, res) => {
