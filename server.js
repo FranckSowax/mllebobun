@@ -366,7 +366,7 @@ function frPhoneToWa(phone) {
   return digits;
 }
 
-const MAPS_URL = 'https://www.google.com/maps/dir/?api=1&destination=200+bis+rue+Malbec+33000+Bordeaux&travelmode=driving';
+const MAPS_URL = 'https://www.google.com/maps/dir/?api=1&destination=200+bis+rue+Malbec+33800+Bordeaux&travelmode=driving';
 
 async function sendCustomerWhatsApp(order) {
   const to = frPhoneToWa(order.phone);
@@ -377,7 +377,7 @@ async function sendCustomerWhatsApp(order) {
     `Code de retrait : *${order.code}*\n${lines}\n` +
     `Total payé : *${(order.amount / 100).toFixed(2).replace('.', ',')} €*\n\n` +
     `Présentez ce QR code (ou votre code) au retrait :\n` +
-    `📍 200 bis rue Malbec, 33000 Bordeaux\n\nÀ tout de suite !`;
+    `📍 200 bis rue Malbec, 33800 Bordeaux\n\nÀ tout de suite !`;
   const qr = await QRCode.toDataURL(order.code, { width: 480, margin: 2 });
   try {
     await whapi('/messages/image', { to, media: qr, caption });
@@ -889,7 +889,7 @@ function conciergeSystemPrompt() {
     + `- Exemples de ton : « Excellent choix 🍜 » · « On vous attend ce soir 🌙 » · « Ça, c'est notre best-seller ! ».\n\n`
     + `INFOS PRATIQUES (utilise-les pour répondre DIRECTEMENT, ne les invente jamais) :\n`
     + `- Horaires : du lundi au vendredi 11h45–15h et 18h30–22h ; samedi et dimanche 18h–22h30.\n`
-    + `- Adresse : 200 bis rue Malbec, 33000 Bordeaux (retrait sur place / Click & Collect).\n`
+    + `- Adresse : 200 bis rue Malbec, 33800 Bordeaux (retrait sur place / Click & Collect).\n`
     + `- Téléphone : 05 57 95 54 39 · Email : mademoisellebobun@gmail.com\n`
     + `- Commande : à emporter avec paiement en ligne (retrait sur place), ou livraison via Uber Eats et Deliveroo.\n`
     + `- Spécialités : Bo Bún, Loc Lac (riz sauté au bœuf), nems.\n\n`
