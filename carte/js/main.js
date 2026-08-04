@@ -323,8 +323,8 @@
     });
     gsap.ticker.lagSmoothing(0);
 
-    // hero : pin + scrub du film (121 frames) + étapes de texte
-    gsap.to({}, {
+    // hero : UN SEUL trigger pinné qui pilote les frames (onUpdate) ET les textes (timeline)
+    gsap.timeline({
       scrollTrigger: {
         trigger: '#hero', start: 'top top', end: '+=260%',
         pin: true, scrub: .6, anticipatePin: 1,
@@ -333,9 +333,8 @@
           heroDraw(heroCur);
         }
       }
-    });
-    gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top top', end: '+=260%', scrub: .6 } })
-      .to('.hero-cue', { autoAlpha: 0, duration: .08 }, .06)
+    })
+      .to('.hero-cue', { autoAlpha: 0, duration: .08, ease: 'none' }, .06)
       .to('#hero-s1', { autoAlpha: 0, y: -44, duration: .2, ease: 'none' }, .24)
       .fromTo('#hero-s2', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: .16, ease: 'none' }, .58)
       .to('#hero-s2', { autoAlpha: 0, duration: .1, ease: 'none' }, .9);
