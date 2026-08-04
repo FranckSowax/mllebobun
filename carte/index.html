@@ -514,9 +514,8 @@ img { display: block; max-width: 100%; height: auto; }
 }
 
   </style>
-  <link rel="preload" as="image"
-        imagesrcset="/carte/assets/hero/poster@sm.webp 640w, /carte/assets/hero/poster.webp 1280w"
-        imagesizes="100vw">
+  <link rel="preload" as="image" href="/carte/assets/hero-m/poster.webp" media="(max-width: 820px)">
+  <link rel="preload" as="image" href="/carte/assets/hero/poster.webp" media="(min-width: 821px)">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

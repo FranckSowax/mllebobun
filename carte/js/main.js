@@ -130,7 +130,8 @@
   const hctx = heroCanvas.getContext('2d');
   const heroFrames = new Array(HERO_N);
   let heroCur = 0;
-  const heroSrc = i => `/carte/assets/hero/f_${String(i).padStart(3, '0')}.webp`;
+  const HERO_DIR = MOBILE ? '/carte/assets/hero-m' : '/carte/assets/hero'; // film vertical dédié sur mobile
+  const heroSrc = i => `${HERO_DIR}/f_${String(i).padStart(3, '0')}.webp`;
 
   function heroDraw(i) {
     // frame chargée la plus proche (vers l'arrière d'abord, sinon vers l'avant)
@@ -170,6 +171,24 @@
     (window.requestIdleCallback || (f => setTimeout(f, 350)))(warm);
   }
   addEventListener('resize', heroSize);
+
+  // pin + scrub du hero (desktop ET mobile) : un seul trigger pilote frames + textes
+  function initHeroScrub() {
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: '#hero', start: 'top top', end: '+=260%',
+        pin: true, scrub: .6, anticipatePin: 1,
+        onUpdate(self) {
+          heroCur = Math.round(self.progress * (HERO_N - 1));
+          heroDraw(heroCur);
+        }
+      }
+    })
+      .to('.hero-cue', { autoAlpha: 0, duration: .08, ease: 'none' }, .06)
+      .to('#hero-s1', { autoAlpha: 0, y: -44, duration: .2, ease: 'none' }, .24)
+      .fromTo('#hero-s2', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: .16, ease: 'none' }, .58)
+      .to('#hero-s2', { autoAlpha: 0, duration: .1, ease: 'none' }, .9);
+  }
 
   /* ---------- état partagé (un seul rAF pour tout) ---------- */
 
@@ -323,21 +342,7 @@
     });
     gsap.ticker.lagSmoothing(0);
 
-    // hero : UN SEUL trigger pinné qui pilote les frames (onUpdate) ET les textes (timeline)
-    gsap.timeline({
-      scrollTrigger: {
-        trigger: '#hero', start: 'top top', end: '+=260%',
-        pin: true, scrub: .6, anticipatePin: 1,
-        onUpdate(self) {
-          heroCur = Math.round(self.progress * (HERO_N - 1));
-          heroDraw(heroCur);
-        }
-      }
-    })
-      .to('.hero-cue', { autoAlpha: 0, duration: .08, ease: 'none' }, .06)
-      .to('#hero-s1', { autoAlpha: 0, y: -44, duration: .2, ease: 'none' }, .24)
-      .fromTo('#hero-s2', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: .16, ease: 'none' }, .58)
-      .to('#hero-s2', { autoAlpha: 0, duration: .1, ease: 'none' }, .9);
+    initHeroScrub();
 
     railSecs.forEach(sec => {
       const track = sec.querySelector('.rail-track');
@@ -444,6 +449,13 @@
     // rAF unique (vapeur + particules) — coupé si reduced-motion
     if (!REDUCED) {
       (function loop() { tick(); requestAnimationFrame(loop); })();
+    }
+
+    // hero scrub aussi sur mobile (film vertical dédié) — rails restent en carrousels natifs
+    if (!REDUCED && window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      ScrollTrigger.config({ ignoreMobileResize: true });
+      initHeroScrub();
     }
 
     tracks.forEach(track => {
