@@ -130,7 +130,7 @@
   const hctx = heroCanvas.getContext('2d');
   const heroFrames = new Array(HERO_N);
   let heroCur = 0;
-  const heroSrc = i => `assets/hero/f_${String(i).padStart(3, '0')}.webp`;
+  const heroSrc = i => `/carte/assets/hero/f_${String(i).padStart(3, '0')}.webp`;
 
   function heroDraw(i) {
     // frame chargée la plus proche (vers l'arrière d'abord, sinon vers l'avant)
