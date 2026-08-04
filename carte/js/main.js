@@ -86,7 +86,7 @@
                 <img src="/carte/assets/plats/${it.id}.webp"
                      srcset="/carte/assets/plats/${it.id}@sm.webp 320w, /carte/assets/plats/${it.id}.webp 640w"
                      sizes="(max-width:820px) 78vw, 24vw"
-                     alt="${it.nom}" width="640" height="640"
+                     alt="${it.nom} à emporter — Mademoiselle Bobùn, Bordeaux" width="640" height="640"
                      loading="lazy">
               </div>
               <h3>${it.nom}</h3>
