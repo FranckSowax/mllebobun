@@ -123,6 +123,54 @@
 
   syncPrices(); // après la construction du DOM — met à jour les prix en place
 
+  /* ---------- HERO — film scrub (wok flambé -> bol dressé) ---------- */
+
+  const HERO_N = 121;
+  const heroCanvas = $('#hero-film');
+  const hctx = heroCanvas.getContext('2d');
+  const heroFrames = new Array(HERO_N);
+  let heroCur = 0;
+  const heroSrc = i => `assets/hero/f_${String(i).padStart(3, '0')}.webp`;
+
+  function heroDraw(i) {
+    // frame chargée la plus proche (vers l'arrière d'abord, sinon vers l'avant)
+    let img = null;
+    for (let k = i; k >= 0; k--) if (heroFrames[k] && heroFrames[k].ok) { img = heroFrames[k]; break; }
+    if (!img) for (let k = i + 1; k < HERO_N; k++) if (heroFrames[k] && heroFrames[k].ok) { img = heroFrames[k]; break; }
+    if (!img) return;
+    const cw = heroCanvas.width, ch = heroCanvas.height;
+    const s = Math.max(cw / img.width, ch / img.height);
+    const dw = img.width * s, dh = img.height * s;
+    hctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+  }
+
+  function heroSize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    heroCanvas.width = heroCanvas.clientWidth * dpr;
+    heroCanvas.height = heroCanvas.clientHeight * dpr;
+    heroDraw(heroCur);
+  }
+
+  function heroLoad(i, cb) {
+    if (heroFrames[i]) return;
+    const im = new Image();
+    heroFrames[i] = im;
+    im.onload = () => { im.ok = true; if (cb) cb(i); };
+    im.src = heroSrc(i);
+  }
+
+  heroSize();
+  heroLoad(0, () => heroDraw(heroCur));
+  if (!REDUCED) {
+    // passes progressives : grossière (1/6) puis complète — sans peser sur la 1re peinture
+    const warm = () => {
+      for (let i = 0; i < HERO_N; i += 6) heroLoad(i, k => { if (Math.abs(k - heroCur) < 9) heroDraw(heroCur); });
+      setTimeout(() => { for (let i = 0; i < HERO_N; i++) heroLoad(i); }, 1400);
+    };
+    (window.requestIdleCallback || (f => setTimeout(f, 350)))(warm);
+  }
+  addEventListener('resize', heroSize);
+
   /* ---------- état partagé (un seul rAF pour tout) ---------- */
 
   const state = {
@@ -274,6 +322,23 @@
       tick();
     });
     gsap.ticker.lagSmoothing(0);
+
+    // hero : pin + scrub du film (121 frames) + étapes de texte
+    gsap.to({}, {
+      scrollTrigger: {
+        trigger: '#hero', start: 'top top', end: '+=260%',
+        pin: true, scrub: .6, anticipatePin: 1,
+        onUpdate(self) {
+          heroCur = Math.round(self.progress * (HERO_N - 1));
+          heroDraw(heroCur);
+        }
+      }
+    });
+    gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top top', end: '+=260%', scrub: .6 } })
+      .to('.hero-cue', { autoAlpha: 0, duration: .08 }, .06)
+      .to('#hero-s1', { autoAlpha: 0, y: -44, duration: .2, ease: 'none' }, .24)
+      .fromTo('#hero-s2', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: .16, ease: 'none' }, .58)
+      .to('#hero-s2', { autoAlpha: 0, duration: .1, ease: 'none' }, .9);
 
     railSecs.forEach(sec => {
       const track = sec.querySelector('.rail-track');
