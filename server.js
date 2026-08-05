@@ -516,7 +516,15 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
   res.json({ received: true });
 });
 
-app.use(express.json({ limit: '10kb' }));
+/* JSON : 10 Ko par défaut, mais les webhooks Whapi embarquent des aperçus base64
+   énormes (paniers, images) et l'upload menu envoie des images -> limite élevée
+   pour ces chemins, sinon PayloadTooLargeError et le message est PERDU. */
+const jsonSmall = express.json({ limit: '10kb' });
+const jsonBig = express.json({ limit: '6mb' });
+app.use((req, res, next) => {
+  const big = req.path.startsWith('/api/whapi/webhook') || req.path === '/api/menu/upload';
+  return (big ? jsonBig : jsonSmall)(req, res, next);
+});
 
 app.get('/api/health', (req, res) => {
   res.json({
