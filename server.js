@@ -503,7 +503,8 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         phone: (s.metadata && s.metadata.wa) || (s.customer_details && s.customer_details.phone) || '',
         email: (s.customer_details && s.customer_details.email) || '',
         status: 'payée',
-        driveWanted: (s.metadata && s.metadata.mode) === 'drive'
+        driveWanted: (s.metadata && s.metadata.mode) === 'drive',
+        source: (s.metadata && s.metadata.source) || 'site'
       };
       saveOrder(order);
       // WhatsApp en arrière-plan — la réponse au webhook ne doit pas attendre

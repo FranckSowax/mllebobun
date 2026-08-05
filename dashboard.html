@@ -402,6 +402,23 @@
     #flash .code-big { font-family: var(--mono); font-size: clamp(1.4rem, 4vw, 2.4rem); color: #fff; }
     #flash .hint { font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; color: rgba(255,255,255,.85); }
 
+    /* ---- overlay WhatsApp (vert WhatsApp) ---- */
+    #flash-wa {
+      position: fixed; inset: 0; z-index: 100;
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+      background: rgba(37, 211, 102, .32);
+      backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+      text-align: center; cursor: pointer;
+    }
+    #flash-wa.on { display: flex; animation: wablink .5s step-end 8; }
+    @keyframes wablink {
+      0% { background: rgba(37, 211, 102, .48); }
+      50% { background: rgba(37, 211, 102, .12); }
+    }
+    #flash-wa .big { font-weight: 900; font-size: clamp(1.6rem, 5vw, 3.2rem); text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+    #flash-wa .code-big { font-family: var(--mono); font-size: clamp(1.4rem, 4vw, 2.4rem); color: #fff; }
+    #flash-wa .hint { font-family: var(--mono); font-size: .62rem; letter-spacing: .16em; color: rgba(255,255,255,.85); }
+
     /* ---- écran de connexion ---- */
     #login {
       position: fixed; inset: 0; z-index: 90; background: var(--noir);
@@ -538,6 +555,13 @@
   <div id="flash" role="alert">
     <div class="big">🍜 NOUVELLE COMMANDE<span class="vn vn-big">ĐƠN HÀNG MỚI</span></div>
     <div class="code-big" id="flash-code"></div>
+    <div class="hint">TOUCHER POUR FERMER · CHẠM ĐỂ ĐÓNG</div>
+  </div>
+
+  <!-- overlay WhatsApp -->
+  <div id="flash-wa" role="alert">
+    <div class="big">📱 COMMANDE WHATSAPP<span class="vn vn-big">ĐƠN HÀNG WHATSAPP</span></div>
+    <div class="code-big" id="fwa-code"></div>
     <div class="hint">TOUCHER POUR FERMER · CHẠM ĐỂ ĐÓNG</div>
   </div>
 
@@ -720,19 +744,31 @@
         refreshStats(all);
         scheduleStats();
         translateNotes();
-        // overlay vert clignotant
-        $('#flash-code').textContent = o.code + ' · ' + eur(o.amount);
-        const fl = $('#flash');
-        fl.classList.remove('on');
-        void fl.offsetWidth;
-        fl.classList.add('on');
-        startAlert();
-        clearTimeout(fl._t);
-        fl._t = setTimeout(() => { fl.classList.remove('on'); stopAlert(); }, 10000);
-        // impression automatique geree par bobun-print.html (Print Agent)
+        // overlay : WhatsApp (vert WA) ou standard (vert)
+        const isWA = o.source && o.source.toLowerCase().includes('whatsapp');
+        if (isWA) {
+          $('#fwa-code').textContent = o.code + ' · ' + eur(o.amount);
+          const fw = $('#flash-wa');
+          fw.classList.remove('on');
+          void fw.offsetWidth;
+          fw.classList.add('on');
+          startAlert(true);
+          clearTimeout(fw._t);
+          fw._t = setTimeout(() => { fw.classList.remove('on'); stopAlert(); }, 12000);
+        } else {
+          $('#flash-code').textContent = o.code + ' · ' + eur(o.amount);
+          const fl = $('#flash');
+          fl.classList.remove('on');
+          void fl.offsetWidth;
+          fl.classList.add('on');
+          startAlert(false);
+          clearTimeout(fl._t);
+          fl._t = setTimeout(() => { fl.classList.remove('on'); stopAlert(); }, 10000);
+        }
       }
 
       $('#flash').addEventListener('click', () => { $('#flash').classList.remove('on'); stopAlert(); });
+      $('#flash-wa').addEventListener('click', () => { $('#flash-wa').classList.remove('on'); stopAlert(); });
 
       /* ============================================================
          ALERTE SONORE douce (Web Audio, sans fichier externe)
@@ -763,17 +799,34 @@
         });
       }
 
+      function chimeWA(ctx, t0) {
+        // triple bip rapide style notification WhatsApp (plus aigu, staccato)
+        [[1318.5, 0], [1568, 0.12], [1760, 0.24]].forEach(([freq, dt]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'triangle'; o.frequency.value = freq;
+          const t = t0 + dt;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+          o.connect(g).connect(ctx.destination);
+          o.start(t); o.stop(t + 0.2);
+        });
+      }
+
       let alertTimer = null;
-      function startAlert() {
+      function startAlert(waMode) {
         const ctx = ensureAudio();
         if (!ctx) return;
         stopAlert();
         let n = 0;
+        const fn = waMode ? chimeWA : chime;
+        const interval = waMode ? 1200 : 2000;
+        const max = waMode ? 8 : 5;
         (function ring() {
-          if (n >= 5) { stopAlert(); return; }   // ~5 rappels sur ~10 s puis silence
-          chime(ctx, ctx.currentTime);
+          if (n >= max) { stopAlert(); return; }
+          fn(ctx, ctx.currentTime);
           n++;
-          alertTimer = setTimeout(ring, 2000);
+          alertTimer = setTimeout(ring, interval);
         })();
       }
       function stopAlert() { if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; } }
