@@ -8,6 +8,7 @@
 
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const MOBILE = matchMedia('(max-width: 820px)').matches;
+  const GRID = !MOBILE;   // desktop = galerie classique (scroll natif, souris OK)
   const $ = s => document.querySelector(s);
 
   /* ---------- données ---------- */
@@ -79,7 +80,7 @@
           <p class="eyebrow">${String(ci + 1).padStart(2, '0')} — LA CARTE</p>
           <h2>${cat.label}</h2>
         </div>
-        <div class="rail-track" role="list" tabindex="0" aria-label="${cat.label} — ${items.length} plats. Flèches gauche et droite pour naviguer.">
+        <div class="rail-track" role="list"${GRID ? '' : ' tabindex="0"'} aria-label="${cat.label} — ${items.length} plats${GRID ? '' : '. Flèches gauche et droite pour naviguer'}">
           ${items.map((it, ii) => `
             <article class="card" role="listitem" data-id="${it.id}">
               <div class="card-media ${it.shape}">
@@ -327,118 +328,21 @@
   }
 
   /* ============================================================
-     DESKTOP — Lenis + rails pinnés GSAP
+     DESKTOP — galerie statique : scroll vertical natif
+     (pas de Lenis, pas de rails pinnés : la molette d'une souris
+      classique doit défiler la page comme sur n'importe quel site)
      ============================================================ */
 
-  if (!MOBILE && !REDUCED && window.gsap && window.ScrollTrigger) {
-    gsap.registerPlugin(ScrollTrigger);
-    ScrollTrigger.config({ ignoreMobileResize: true });
-
-    const lenis = new Lenis({ smoothWheel: true, lerp: .1 });
-    lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add(t => {
-      lenis.raf(t * 1000);
-      tick();
-    });
-    gsap.ticker.lagSmoothing(0);
-
-    initHeroScrub();
-
-    railSecs.forEach(sec => {
-      const track = sec.querySelector('.rail-track');
-      const title = sec.querySelector('.rail-title');
-      const bar = sec.querySelector('.rail-progress i');
-      const cards = [...track.children];
-      const n = cards.length;
-      const dist = () => Math.max(160, n * 55) * innerHeight / 100;
-      const maxX = () => Math.max(0, track.scrollWidth - innerWidth + innerWidth * .12);
-
-      gsap.to(track, {
-        x: () => -maxX(),
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sec,
-          start: 'top top',
-          end: () => '+=' + dist(),
-          scrub: .6,
-          pin: true,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          onToggle(self) {
-            if (self.isActive) {
-              state.activeTrack = track;
-              state.activeAccent = getComputedStyle(sec).getPropertyValue('--acc').trim();
-              $('#tint').style.background = state.activeAccent;
-            } else if (state.activeTrack === track) {
-              state.activeTrack = null;
-              state.hotCard = null;
-            }
-          },
-          onUpdate(self) {
-            if (bar) bar.style.width = (self.progress * 100).toFixed(2) + '%';
-          }
-        }
-      });
-
-      // titre géant en contre-défilement (parallaxe inverse)
-      gsap.fromTo(title,
-        { x: () => -innerWidth * .15 },
-        {
-          x: () => maxX() * .3,
-          ease: 'none',
-          scrollTrigger: { trigger: sec, start: 'top top', end: () => '+=' + dist(), scrub: .6 }
-        });
-
-      // entrée en cascade + burst aux couleurs de la catégorie
-      ScrollTrigger.create({
-        trigger: sec,
-        start: 'top 60%',
-        once: true,
-        onEnter() {
-          gsap.from(cards, { x: 120, autoAlpha: 0, duration: .8, stagger: .06, ease: 'power3.out', clearProps: 'opacity,visibility' });
-          const acc = getComputedStyle(sec).getPropertyValue('--acc').trim();
-          emitBurst(innerWidth * .72, innerHeight * .5, acc);
-        }
-      });
-    });
-
-    // bandes de transition : ligne-vermicelle dessinée + contamination du tint
-    document.querySelectorAll('.band').forEach(band => {
-      const path = band.querySelector('path');
-      const len = path.getTotalLength();
-      path.style.strokeDasharray = len;
-      path.style.strokeDashoffset = len;
-      gsap.to(path, {
-        strokeDashoffset: 0,
-        ease: 'none',
-        scrollTrigger: { trigger: band, start: 'top 90%', end: 'bottom 40%', scrub: .5 }
-      });
-      ScrollTrigger.create({
-        trigger: band,
-        start: 'top bottom',
-        end: 'bottom top',
-        onUpdate(self) {
-          $('#tint').style.background = gsap.utils.interpolate(band.dataset.from, band.dataset.to)(self.progress);
-        }
-      });
-    });
-
-    // clavier : ←/→ quand un rail a le focus → avance d'une card
-    tracks.forEach(track => {
-      track.addEventListener('keydown', e => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        e.preventDefault();
-        const card = track.children[0].getBoundingClientRect();
-        const st = ScrollTrigger.getAll().find(s => s.pin && s.trigger.contains(track));
-        if (!st) return;
-        const total = st.end - st.start;
-        const mx = Math.max(1, track.scrollWidth - innerWidth + innerWidth * .12);
-        const step = (card.width + 30) / mx * total;
-        lenis.scrollTo(lenis.scroll + (e.key === 'ArrowRight' ? step : -step));
-      });
-    });
-
-    addEventListener('resize', () => { sizeCanvas(); ScrollTrigger.refresh(); });
+  if (GRID) {
+    // seule animation conservée sur desktop : le film du hero
+    if (!REDUCED && window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      ScrollTrigger.config({ ignoreMobileResize: true });
+      initHeroScrub();
+      addEventListener('resize', () => ScrollTrigger.refresh());
+    }
+    // les vermicelles de séparation restent dessinées en entier (aucun scrub)
+    $('#fx').style.display = 'none';
   }
 
   /* ============================================================
@@ -446,6 +350,7 @@
      ============================================================ */
 
   else {
+    // ---- MOBILE : carrousels natifs + effets ----
     // rAF unique (vapeur + particules) — coupé si reduced-motion
     if (!REDUCED) {
       (function loop() { tick(); requestAnimationFrame(loop); })();
