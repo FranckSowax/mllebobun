@@ -35,7 +35,7 @@
       "prix": "12,00 €",
       "desc": "Vermicelles, salade, concombre, pickles de carottes, soja, menthe, coriandre, oignons frits avec bœuf marinés et cacahuète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/bobunbeef/"
+      "url": "https://www.mademoisellebobun.com/bobunbeef/?add=boeuf"
     },
     {
       "cat": "bobun",
@@ -45,7 +45,7 @@
       "prix": "12,00 €",
       "desc": "Vermicelles, salade, concombre, pickles de carottes, soja, menthe, coriandre, oignons frits avec poulet marinés et cacahuète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/bobunbeef/"
+      "url": "https://www.mademoisellebobun.com/bobunbeef/?add=poulet"
     },
     {
       "cat": "bobun",
@@ -55,7 +55,7 @@
       "prix": "13,00 €",
       "desc": "Vermicelles, salade, concombre, pickles de carottes, soja, menthe, coriandre, oignons frits avec crevette marinés et cacahuète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/bobunbeef/"
+      "url": "https://www.mademoisellebobun.com/bobunbeef/?add=crevette"
     },
     {
       "cat": "bobun",
@@ -65,7 +65,7 @@
       "prix": "12,00 €",
       "desc": "Vermicelles, salade, concombre, pickles de carottes, soja, menthe, coriandre, oignons frits avec tofu marinés et cacahuète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/bobunbeef/"
+      "url": "https://www.mademoisellebobun.com/bobunbeef/?add=veggie"
     },
     {
       "cat": "loclac",
@@ -75,7 +75,7 @@
       "prix": "12,00 €",
       "desc": "Tendres pièces de bœuf saisies au wok avec sa sauce secrète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/loclac/"
+      "url": "https://www.mademoisellebobun.com/loclac/?add=loclac_boeuf"
     },
     {
       "cat": "loclac",
@@ -85,7 +85,7 @@
       "prix": "12,00 €",
       "desc": "Délicieux morceaux de poulet frits deux fois puis sautés au wok.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/loclac/"
+      "url": "https://www.mademoisellebobun.com/loclac/?add=loclac_poulet"
     },
     {
       "cat": "loclac",
@@ -95,7 +95,7 @@
       "prix": "12,00 €",
       "desc": "Dés de tofu marinés puis sautés au wok avec sauce secrète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/loclac/"
+      "url": "https://www.mademoisellebobun.com/loclac/?add=loclac_veggie"
     },
     {
       "cat": "loclac",
@@ -105,7 +105,7 @@
       "prix": "10,90 €",
       "desc": "Crevettes ou poulet.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/loclac/"
+      "url": "https://www.mademoisellebobun.com/loclac/?add=riz_cantonnais"
     },
     {
       "cat": "nouilles",
@@ -115,7 +115,7 @@
       "prix": "12,00 €",
       "desc": "Nouilles sautées au wok avec poulet mariné et légumes variés.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/padthai/"
+      "url": "https://www.mademoisellebobun.com/padthai/?add=padthai_poulet"
     },
     {
       "cat": "nouilles",
@@ -125,7 +125,7 @@
       "prix": "12,00 €",
       "desc": "Nouilles sautées au wok avec bœuf mariné et légumes variés.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/padthai/"
+      "url": "https://www.mademoisellebobun.com/padthai/?add=padthai_boeuf"
     },
     {
       "cat": "nouilles",
@@ -135,7 +135,7 @@
       "prix": "13,00 €",
       "desc": "Nouilles sautées au wok avec crevettes marinées et légumes.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/padthai/"
+      "url": "https://www.mademoisellebobun.com/padthai/?add=padthai_crevette"
     },
     {
       "cat": "nouilles",
@@ -145,7 +145,7 @@
       "prix": "13,00 €",
       "desc": "Nouilles de blé, viande au choix (crevette, bœuf, poulet, tofu), légumes variés sautés au wok avec sauce secrète.",
       "shape": "round",
-      "url": "https://www.mademoisellebobun.com/padthai/"
+      "url": "https://www.mademoisellebobun.com/padthai/?add=mi_xao"
     },
     {
       "cat": "entrees",
@@ -154,7 +154,7 @@
       "prix": "6,00 €",
       "desc": "Plat traditionnel du Viêt Nam, sorte de beignet frit constitué de farce.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=nems",
       "sync": "nems"
     },
     {
@@ -164,7 +164,7 @@
       "prix": "6,00 €",
       "desc": "Servis par 4 avec sauce sweet chili.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=samoussa",
       "sync": "samoussa"
     },
     {
@@ -174,7 +174,7 @@
       "prix": "6,00 €",
       "desc": "Raviolis dorés et croustillants aux crevettes.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=raviolis_crevettes",
       "sync": "raviolis_crevettes"
     },
     {
@@ -184,7 +184,7 @@
       "prix": "7,00 €",
       "desc": "Grand rouleau de printemps aux crevettes, coupé en deux.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=goicuon_crevette",
       "sync": "goicuon_crevette"
     },
     {
@@ -194,7 +194,7 @@
       "prix": "6,50 €",
       "desc": "Grand rouleau de printemps au bœuf citronnelle, coupé en deux.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=goicuon_boeuf",
       "sync": "goicuon_boeuf"
     },
     {
@@ -204,7 +204,7 @@
       "prix": "6,00 €",
       "desc": "Grand rouleau de printemps au tofu mariné, coupé en deux.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=goicuon_veggie",
       "sync": "goicuon_veggie"
     },
     {
@@ -214,7 +214,7 @@
       "prix": "7,00 €",
       "desc": "Ailes de poulet marinées & frites façon vietnamienne (recette familiale). Servies par 8 avec sauce sweet chili.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=ailes_poulet",
       "sync": "ailes_poulet"
     },
     {
@@ -224,7 +224,7 @@
       "prix": "7,50 €",
       "desc": "Crêpe vietnamienne à base de farine de riz, enroulée et garnie de viande de porc hachée.",
       "shape": "square",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=banh_cuon",
       "sync": "banh_cuon"
     },
     {
@@ -234,7 +234,7 @@
       "prix": "12,00 €",
       "desc": "Émincés de bœuf sautés oignons & poivrons au wok, sauce secrète, servis avec riz blanc.",
       "shape": "round",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=boeuf_oignons",
       "sync": "boeuf_oignons"
     },
     {
@@ -244,7 +244,7 @@
       "prix": "12,00 €",
       "desc": "Poulet mariné sauce maison, grillé façon vietnamienne, servi avec riz blanc.",
       "shape": "round",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=poulet_grille_viet",
       "sync": "poulet_grille_viet"
     },
     {
@@ -254,7 +254,7 @@
       "prix": "9,00 €",
       "desc": "Salade de papaye, mangue, oignons, carottes râpées, cacahuète & oignons frits, accompagnée de crevettes marinées.",
       "shape": "round",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=goi_tom_xoai",
       "sync": "goi_tom_xoai"
     },
     {
@@ -264,7 +264,7 @@
       "prix": "8,00 €",
       "desc": "Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits & cacahuète.",
       "shape": "round",
-      "url": "https://wa.me/33770271688",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=goi_ga",
       "sync": "goi_ga"
     }
   ]

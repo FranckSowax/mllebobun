@@ -169,6 +169,27 @@ const CATALOG = {
     amount: 1200,
     description: 'Tofu doré sauté au wok, riz rouge maison ou riz jasmin, crudités et pickles de carottes.'
   },
+  /* pad thai & nouilles */
+  padthai_poulet: { name: 'Pad Thai Poulet', amount: 1200, description: 'Nouilles de riz sautées au wok, poulet, œuf, pousses de soja, cacahuètes, sauce tamarin.' },
+  padthai_boeuf: { name: 'Pad Thai Bœuf', amount: 1200, description: 'Nouilles de riz sautées au wok, bœuf, œuf, pousses de soja, cacahuètes, sauce tamarin.' },
+  padthai_crevette: { name: 'Pad Thai Crevette', amount: 1300, description: 'Nouilles de riz sautées au wok, crevettes, œuf, pousses de soja, cacahuètes, sauce tamarin.' },
+  padthai_special: { name: 'Pad Thai Spécial Bœuf & Crevette', amount: 1790, description: 'Nouilles de riz sautées au wok, bœuf et crevettes, œuf, pousses de soja, cacahuètes, sauce tamarin.' },
+  mi_xao: { name: 'Mi Xao', amount: 1300, description: 'Nouilles de blé, viande au choix, légumes variés sautés au wok avec sauce secrète.' },
+  riz_cantonnais: { name: 'Riz Cantonnais', amount: 1090, description: 'Riz sauté au wok, crevettes ou poulet.' },
+  /* entrées */
+  nems: { name: 'Nems Poulet / Veggie', amount: 600, description: 'Beignets frits garnis, servis avec sauce.' },
+  samoussa: { name: 'Samoussa Poulet / Légumes', amount: 600, description: 'Servis par 4 avec sauce sweet chili.' },
+  raviolis_crevettes: { name: 'Raviolis Frits aux Crevettes', amount: 600, description: 'Raviolis dorés et croustillants aux crevettes.' },
+  goicuon_crevette: { name: 'Gỏi Cuốn Crevette', amount: 700, description: 'Grand rouleau de printemps aux crevettes, coupé en deux.' },
+  goicuon_boeuf: { name: 'Gỏi Cuốn Bœuf / Poulet', amount: 650, description: 'Grand rouleau de printemps au bœuf citronnelle, coupé en deux.' },
+  goicuon_veggie: { name: 'Gỏi Cuốn Veggie', amount: 600, description: 'Grand rouleau de printemps au tofu mariné, coupé en deux.' },
+  ailes_poulet: { name: 'Ailes de Poulet', amount: 700, description: 'Ailes marinées & frites façon vietnamienne, servies par 8 avec sauce sweet chili.' },
+  banh_cuon: { name: 'Bánh Cuốn', amount: 750, description: 'Crêpe de riz vietnamienne garnie de porc haché.' },
+  /* spécial viêt & salades */
+  boeuf_oignons: { name: 'Bœuf aux Oignons', amount: 1200, description: 'Émincés de bœuf sautés oignons & poivrons au wok, servis avec riz blanc.' },
+  poulet_grille_viet: { name: 'Poulet Grillé Façon Viêt', amount: 1200, description: 'Poulet mariné sauce maison, grillé, servi avec riz blanc.' },
+  goi_tom_xoai: { name: 'Gỏi Tôm Xoài', amount: 900, description: 'Salade de papaye, mangue, carottes, cacahuètes et crevettes marinées.' },
+  goi_ga: { name: 'Gỏi Gà', amount: 800, description: 'Salade de choux blanc, poivrons, oignons, poulet maison, cacahuètes.' },
   /* suppléments */
   sup_nems: { name: 'Supplément 2 nems', amount: 300, sup: true },
   sup_poulet: { name: 'Supplément poulet', amount: 300, sup: true },
@@ -177,7 +198,7 @@ const CATALOG = {
   sup_oeuf: { name: 'Supplément œuf au plat', amount: 100, sup: true }
 };
 
-const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/', '/padthai/'];
+const CANCEL_PATHS = ['/', '/film', '/bobunbeef/', '/loclac/', '/padthai/', '/entrees/'];
 
 // Menu piloté par Supabase (prix, descriptions, images). Repli sur CATALOG codé en dur.
 let MENU = {};   // id -> { id, cat, name, name_vn, description, amount, image, sup, active }

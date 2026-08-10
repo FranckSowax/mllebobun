@@ -49,6 +49,7 @@
   const PAGE = location.pathname.includes('/bobunbeef') ? '/bobunbeef/'
     : location.pathname.includes('/loclac') ? '/loclac/'
     : location.pathname.includes('/padthai') ? '/padthai/'
+    : location.pathname.includes('/entrees') ? '/entrees/'
     : location.pathname.includes('/film') ? '/film'
     : '/';
 

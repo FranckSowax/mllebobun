@@ -25,6 +25,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.mademoisellebobun.com/entrees/</loc>
+    <lastmod>2026-08-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.mademoisellebobun.com/comptoir</loc>
     <lastmod>2026-08-04</lastmod>
     <changefreq>monthly</changefreq>

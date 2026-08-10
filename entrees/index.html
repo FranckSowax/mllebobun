@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrées &amp; Spécialités — Commander · Mademoiselle Bobùn</title>
+  <meta name="description" content="Commandez nos nems, rouleaux de printemps, ailes de poulet et spécialités vietnamiennes à emporter ou en Drive — paiement en ligne, retrait au 200 bis rue Malbec, Bordeaux.">
+  <link rel="canonical" href="https://www.mademoisellebobun.com/entrees/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%A2%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/order.css">
+  <style>
+    :root {
+      --noir: #0B0805; --noir2: #151009; --ivoire: #F4EDE0; --caramel: #E8912D;
+      --mono: 'IBM Plex Mono', monospace; --sans: 'Be Vietnam Pro', sans-serif;
+      --glass-bg: rgba(21, 16, 9, .72);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: radial-gradient(ellipse at 50% 0%, #1b1206 0%, var(--noir) 60%); color: var(--ivoire); font-family: var(--sans); min-height: 100vh; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--caramel); outline-offset: 3px; border-radius: 6px; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 7vh 5vw 10vh; }
+    .eyebrow { font-family: var(--mono); font-size: .62rem; letter-spacing: .18em; color: var(--caramel); }
+    .intro { text-align: center; margin-bottom: 6vh; }
+    .intro h1 { font-weight: 900; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; margin: 10px 0 12px; }
+    .intro p { font-weight: 300; font-size: 1rem; line-height: 1.6; color: rgba(244, 237, 224, .8); max-width: 560px; margin: 0 auto; }
+    .choix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin-bottom: 5vh; }
+    .choix-card {
+      background: var(--noir2); border: 1px solid rgba(244, 237, 224, .1); border-radius: 20px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: border-color .25s, transform .25s;
+    }
+    .choix-card:hover { transform: translateY(-3px); }
+    .choix-media { aspect-ratio: 1 / 1; overflow: hidden; }
+    .choix-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .choix-card > .eyebrow { padding: 16px 18px 0; }
+    .choix-card h3 { font-weight: 900; font-size: 1.15rem; padding: 4px 18px 0; }
+    .choix-card > p { font-weight: 300; font-size: .84rem; line-height: 1.5; color: rgba(244, 237, 224, .72); padding: 8px 18px 6px; flex: 1; }
+    .choix-card .order-row { margin: 0 18px 16px; padding-top: 14px; }
+    .accent-menthe { color: #86B27A; }
+    .accent-bleu { color: #3D8BFF; }
+    .platform-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 5vh; }
+    .btn-brand {
+      display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+      padding: 14px 26px; border-radius: 999px; font-weight: 800; text-decoration: none;
+      font-size: 1rem; border: 1px solid transparent; transition: transform .2s, filter .2s;
+    }
+    .btn-brand:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-uber { background: #06C167; color: #0b0714; }
+    .btn-uber .eats { font-weight: 900; }
+    .btn-deliveroo { background: #00CCBC; color: #0b0714; font-style: italic; font-weight: 900; }
+    .back-home-row { text-align: center; margin-top: 2vh; }
+    .btn-back { background: transparent; border: 1px solid rgba(244, 237, 224, .3); color: var(--ivoire); font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; }
+    .foot-infos { text-align: center; font-family: var(--mono); font-size: .58rem; letter-spacing: .1em; color: rgba(244, 237, 224, .5); line-height: 2; margin-top: 5vh; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="intro">
+      <p class="eyebrow">À PARTAGER · CUISINE VIETNAMIENNE</p>
+      <h1>Entrées &amp; Spécialités</h1>
+      <p>Nems, rouleaux de printemps, ailes de poulet et nos spécialités du Viêt Nam. Ajoutez vos plats, choisissez le mode de retrait, payez en ligne — votre code arrive sur WhatsApp.</p>
+    </div>
+
+    <div class="choix-grid">
+      <article class="choix-card" data-id="nems">
+        <div class="choix-media"><img src="/assets/plats/nems.webp" alt="Nems Poulet / Veggie à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ENTRÉE</p>
+        <h3>Nems Poulet / Veggie</h3>
+        <p>Plat traditionnel du Viêt Nam, sorte de beignet frit constitué de farce.</p>
+      </article>
+      <article class="choix-card" data-id="samoussa">
+        <div class="choix-media"><img src="/assets/plats/samoussa.webp" alt="Samoussa Poulet / Légumes à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ENTRÉE</p>
+        <h3>Samoussa Poulet / Légumes</h3>
+        <p>Servis par 4 avec sauce sweet chili.</p>
+      </article>
+      <article class="choix-card" data-id="raviolis_crevettes">
+        <div class="choix-media"><img src="/assets/plats/raviolis-crevettes.webp" alt="Raviolis Frits aux Crevettes à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ENTRÉE</p>
+        <h3>Raviolis Frits aux Crevettes</h3>
+        <p>Raviolis dorés et croustillants aux crevettes.</p>
+      </article>
+      <article class="choix-card" data-id="goicuon_crevette">
+        <div class="choix-media"><img src="/assets/plats/goicuon-crevette.webp" alt="Gỏi Cuốn Crevette à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ROULEAU DE PRINTEMPS</p>
+        <h3>Gỏi Cuốn Crevette</h3>
+        <p>Grand rouleau de printemps aux crevettes, coupé en deux.</p>
+      </article>
+      <article class="choix-card" data-id="goicuon_boeuf">
+        <div class="choix-media"><img src="/assets/plats/goicuon-boeuf.webp" alt="Gỏi Cuốn Bœuf / Poulet à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ROULEAU DE PRINTEMPS</p>
+        <h3>Gỏi Cuốn Bœuf / Poulet</h3>
+        <p>Grand rouleau de printemps au bœuf citronnelle, coupé en deux.</p>
+      </article>
+      <article class="choix-card" data-id="goicuon_veggie">
+        <div class="choix-media"><img src="/assets/plats/goicuon-veggie.webp" alt="Gỏi Cuốn Veggie à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ROULEAU DE PRINTEMPS</p>
+        <h3>Gỏi Cuốn Veggie</h3>
+        <p>Grand rouleau de printemps au tofu mariné, coupé en deux.</p>
+      </article>
+      <article class="choix-card" data-id="ailes_poulet">
+        <div class="choix-media"><img src="/assets/plats/ailes-poulet.webp" alt="Ailes de Poulet à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">RECETTE FAMILIALE</p>
+        <h3>Ailes de Poulet</h3>
+        <p>Ailes de poulet marinées &amp; frites façon vietnamienne (recette familiale). Servies par 8 avec sauce sweet chili.</p>
+      </article>
+      <article class="choix-card" data-id="banh_cuon">
+        <div class="choix-media"><img src="/assets/plats/banh-cuon.webp" alt="Bánh Cuốn à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-menthe">ENTRÉE</p>
+        <h3>Bánh Cuốn</h3>
+        <p>Crêpe vietnamienne à base de farine de riz, enroulée et garnie de viande de porc hachée.</p>
+      </article>
+      <article class="choix-card" data-id="boeuf_oignons">
+        <div class="choix-media"><img src="/assets/plats/boeuf-oignons.webp" alt="Bœuf aux Oignons à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-bleu">SPÉCIAL VIÊT</p>
+        <h3>Bœuf aux Oignons</h3>
+        <p>Émincés de bœuf sautés oignons &amp; poivrons au wok, sauce secrète, servis avec riz blanc.</p>
+      </article>
+      <article class="choix-card" data-id="poulet_grille_viet">
+        <div class="choix-media"><img src="/assets/plats/poulet-grille-viet.webp" alt="Poulet Grillé Façon Viêt à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-bleu">SPÉCIAL VIÊT</p>
+        <h3>Poulet Grillé Façon Viêt</h3>
+        <p>Poulet mariné sauce maison, grillé façon vietnamienne, servi avec riz blanc.</p>
+      </article>
+      <article class="choix-card" data-id="goi_tom_xoai">
+        <div class="choix-media"><img src="/assets/plats/goi-tom-xoai.webp" alt="Gỏi Tôm Xoài à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-bleu">SALADE</p>
+        <h3>Gỏi Tôm Xoài</h3>
+        <p>Salade de papaye, mangue, oignons, carottes râpées, cacahuète &amp; oignons frits, accompagnée de crevettes marinées.</p>
+      </article>
+      <article class="choix-card" data-id="goi_ga">
+        <div class="choix-media"><img src="/assets/plats/goi-ga.webp" alt="Gỏi Gà à emporter — Mademoiselle Bobùn, Bordeaux" loading="lazy"></div>
+        <p class="eyebrow accent-bleu">SALADE</p>
+        <h3>Gỏi Gà</h3>
+        <p>Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits &amp; cacahuète.</p>
+      </article>
+    </div>
+
+    <div class="platform-row">
+      <a class="btn-brand btn-uber" href="https://www.ubereats.com/fr/store/mademoiselle-bo-bun/TKMPA668Xsyp7tIMrtloPw" target="_blank" rel="noopener" aria-label="Commander sur Uber Eats"><span>Uber</span><span class="eats">Eats</span></a>
+      <a class="btn-brand btn-deliveroo" href="https://deliveroo.fr/fr/menu/bordeaux/gare-st-jean-nansouty/mademoiselle-bobun" target="_blank" rel="noopener" aria-label="Commander sur Deliveroo">deliveroo</a>
+    </div>
+
+    <div class="back-home-row">
+      <a class="btn-brand btn-back" href="/">← RETOUR À LA CARTE</a>
+    </div>
+    <p class="foot-infos">200 BIS RUE MALBEC, 33800 BORDEAUX · LUN–VEN 11H45–15H &amp; 18H30–22H · WEEK-END 18H–22H30<br>
+      <a href="tel:+33557955439">+33 5 57 95 54 39</a></p>
+  </main>
+
+  <script>
+    window.ORDER_ITEMS = [
+      { id: 'nems', price: 600 },
+      { id: 'samoussa', price: 600 },
+      { id: 'raviolis_crevettes', price: 600 },
+      { id: 'goicuon_crevette', price: 700 },
+      { id: 'goicuon_boeuf', price: 650 },
+      { id: 'goicuon_veggie', price: 600 },
+      { id: 'ailes_poulet', price: 700 },
+      { id: 'banh_cuon', price: 750 },
+      { id: 'boeuf_oignons', price: 1200 },
+      { id: 'poulet_grille_viet', price: 1200 },
+      { id: 'goi_tom_xoai', price: 900 },
+      { id: 'goi_ga', price: 800 }
+    ];
+  </script>
+  <script src="/pixel.js"></script>
+  <script src="/js/order.js" defer></script>
+</body>
+</html>
