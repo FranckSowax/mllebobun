@@ -905,14 +905,28 @@ async function sendCarte(to) {
 
 /* ---------- Concierge IA (Mistral) : comprend un message libre et répond ---------- */
 
-async function mistralChat(messages, tools) {
+async function mistralChat(messages, tools, attempt = 0) {
   const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${MISTRAL_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: MISTRAL_MODEL, messages, tools, tool_choice: 'auto', temperature: 0.3, max_tokens: 400 })
   });
+  // 429 (quota / cadence Mistral) ou 5xx : une seule relance après 2 s, puis on laisse le repli répondre
+  if ((r.status === 429 || r.status >= 500) && attempt < 1) {
+    console.warn('mistral', r.status, '→ nouvelle tentative dans 2 s');
+    await new Promise(res => setTimeout(res, 2000));
+    return mistralChat(messages, tools, attempt + 1);
+  }
   if (!r.ok) throw new Error('mistral ' + r.status + ' ' + (await r.text().catch(() => '')).slice(0, 200));
   return r.json();
+}
+
+// Repli quand l'IA est indisponible : le client ne doit JAMAIS rester sans réponse
+async function conciergeFallback(from, text, reason) {
+  console.error('concierge repli (' + reason + ') pour', from);
+  await whapi('/messages/text', { to: from, body: 'Bonjour 👋 Merci pour votre message ! Voici notre carte pour composer votre commande — et pour toute question, appelez-nous au 05 57 95 54 39 🍜' }).catch(() => {});
+  await sendCarte(from).catch(() => {});
+  if (TEAM_WHATSAPP) await whapi('/messages/text', { to: TEAM_WHATSAPP, body: `⚠️ *Concierge IA indisponible* (${reason.slice(0, 80)})\n👤 +${from} a écrit : « ${text.slice(0, 200)} »\nLa carte lui a été envoyée automatiquement — merci de prendre le relais si besoin.` }).catch(() => {});
 }
 
 function conciergeTools() {
@@ -960,10 +974,16 @@ async function conciergeReply(from, text) {
   const byId = Object.fromEntries(dishes.map(d => [d.id, d]));
   if (!MISTRAL_KEY) { await sendCarte(from); return; } // repli sans clé : la carte en texte
 
-  const data = await mistralChat(
-    [{ role: 'system', content: conciergeSystemPrompt() }, { role: 'user', content: text.slice(0, 500) }],
-    conciergeTools()
-  );
+  let data;
+  try {
+    data = await mistralChat(
+      [{ role: 'system', content: conciergeSystemPrompt() }, { role: 'user', content: text.slice(0, 500) }],
+      conciergeTools()
+    );
+  } catch (e) {
+    await conciergeFallback(from, text, e.message);
+    return;
+  }
   const msg = data.choices && data.choices[0] && data.choices[0].message;
   const call = msg && msg.tool_calls && msg.tool_calls[0];
   if (!call) {
