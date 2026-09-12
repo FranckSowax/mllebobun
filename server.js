@@ -188,6 +188,7 @@ const CATALOG = {
   /* spécial viêt & salades */
   boeuf_oignons: { name: 'Bœuf aux Oignons', amount: 1200, description: 'Émincés de bœuf sautés oignons & poivrons au wok, servis avec riz blanc.' },
   poulet_grille_viet: { name: 'Poulet Grillé Façon Viêt', amount: 1200, description: 'Poulet mariné sauce maison, grillé, servi avec riz blanc.' },
+  brochette_boeuf: { name: 'Brochettes de Bœuf', amount: 1300, description: 'Marinées et grillées, servies avec riz parfumé ou vermicelles de riz.' },
   goi_tom_xoai: { name: 'Gỏi Tôm Xoài', amount: 900, description: 'Salade de papaye, mangue, carottes, cacahuètes et crevettes marinées.' },
   goi_ga: { name: 'Gỏi Gà', amount: 800, description: 'Salade de choux blanc, poivrons, oignons, poulet maison, cacahuètes.' },
   /* suppléments */
@@ -216,8 +217,25 @@ function effectiveCatalog() {
   for (const [id, m] of Object.entries(MENU)) if (m.active !== false) out[id] = m; else delete out[id];
   return out;
 }
+/* repli : instantané du menu Supabase embarqué dans le dépôt (menu-seed.json),
+   utilisé tant que Supabase est injoignable (projet en pause / DNS KO). */
+function loadMenuSeed() {
+  try {
+    const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'menu-seed.json'), 'utf8'));
+    const m = {};
+    for (const r of (seed.items || [])) {
+      m[r.id] = {
+        id: r.id, cat: r.cat || '', name: r.name, name_vn: r.name_vn || '',
+        description: r.description || '', amount: r.amount, image: r.image || '',
+        sup: !!r.sup, active: r.active !== false, sort: r.sort || 0
+      };
+    }
+    MENU = m;
+    console.log(`menu-seed: ${Object.keys(m).length} articles de menu chargés (repli)`);
+  } catch (e) { console.error('menu-seed:', e.message); }
+}
 async function sbLoadMenu() {
-  if (!sb) return;
+  if (!sb) { if (!Object.keys(MENU).length) loadMenuSeed(); return; }
   try {
     const { data, error } = await sb.from('menu_items').select('*').order('sort_order', { ascending: true });
     if (error) throw error;
@@ -231,7 +249,10 @@ async function sbLoadMenu() {
     }
     MENU = m;
     console.log(`supabase: ${Object.keys(m).length} articles de menu chargés`);
-  } catch (e) { console.error('supabase menu:', e.message); }
+  } catch (e) {
+    console.error('supabase menu:', e.message);
+    if (!Object.keys(MENU).length) loadMenuSeed();
+  }
 }
 
 /* ---------- Persistance (JSONL sur volume) ---------- */

@@ -24,8 +24,9 @@ const NEW_DISHES = [
   { id: 'banh_cuon', cat: 'entrees', name: 'Bánh Cuốn', name_vn: 'Bánh cuốn', amount: 750, sort: 47, description: 'Crêpe vietnamienne à base de farine de riz, enroulée et garnie de viande de porc hachée.' },
   { id: 'boeuf_oignons', cat: 'special', name: 'Bœuf aux Oignons', name_vn: 'Bò xào hành tây', amount: 1200, sort: 50, description: 'Émincés de bœuf sautés oignons & poivrons au wok, sauce secrète, servis avec riz blanc.' },
   { id: 'poulet_grille_viet', cat: 'special', name: 'Poulet Grillé Façon Viêt', name_vn: 'Gà nướng', amount: 1200, sort: 51, description: 'Poulet mariné sauce maison, grillé façon vietnamienne, servi avec riz blanc.' },
-  { id: 'goi_tom_xoai', cat: 'special', name: 'Gỏi Tôm Xoài', name_vn: 'Gỏi tôm xoài', amount: 900, sort: 52, description: 'Salade de papaye, mangue, oignons, carottes râpées, cacahuète & oignons frits, accompagnée de crevettes marinées.' },
-  { id: 'goi_ga', cat: 'special', name: 'Gỏi Gà', name_vn: 'Gỏi gà', amount: 800, sort: 53, description: 'Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits & cacahuète.' },
+  { id: 'brochette_boeuf', cat: 'special', name: 'Brochettes de Bœuf', name_vn: 'Bò nướng xiên', amount: 1300, sort: 52, description: 'Marinées et grillées, servies avec riz parfumé ou vermicelles de riz.' },
+  { id: 'goi_tom_xoai', cat: 'special', name: 'Gỏi Tôm Xoài', name_vn: 'Gỏi tôm xoài', amount: 900, sort: 53, description: 'Salade de papaye, mangue, oignons, carottes râpées, cacahuète & oignons frits, accompagnée de crevettes marinées.' },
+  { id: 'goi_ga', cat: 'special', name: 'Gỏi Gà', name_vn: 'Gỏi gà', amount: 800, sort: 54, description: 'Salade, poivrons, choux blanc, oignons avec poulet maison et oignons frits & cacahuète.' },
   /* boissons : 2 € — jus litchi/goyave/coco/mangue 2,50 € — bière Saigon 3 € */
   { id: 'coca', cat: 'boissons', name: 'Coca-Cola', name_vn: '', amount: 200, sort: 60, description: '33 cl.' },
   { id: 'coca_zero', cat: 'boissons', name: 'Coca-Cola Zéro', name_vn: '', amount: 200, sort: 61, description: '33 cl.' },

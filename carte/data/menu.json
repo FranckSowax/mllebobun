@@ -249,6 +249,16 @@
     },
     {
       "cat": "special",
+      "id": "brochette-boeuf",
+      "nom": "Brochettes de Bœuf",
+      "prix": "13,00 €",
+      "desc": "Marinées et grillées, servies avec riz parfumé ou vermicelles de riz.",
+      "shape": "round",
+      "url": "https://www.mademoisellebobun.com/entrees/?add=brochette_boeuf",
+      "sync": "brochette_boeuf"
+    },
+    {
+      "cat": "special",
       "id": "goi-tom-xoai",
       "nom": "Gỏi Tôm Xoài",
       "prix": "9,00 €",
