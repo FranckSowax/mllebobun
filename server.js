@@ -36,7 +36,7 @@ const WHAPI_API_URL = (process.env.WHAPI_API_URL || 'https://gate.whapi.cloud').
 const TEAM_WHATSAPP = (process.env.TEAM_WHATSAPP || '').replace(/\D/g, '');
 const DASHBOARD_KEY = process.env.DASHBOARD_KEY || '';
 const MISTRAL_KEY = process.env.MISTRAL_API_KEY || '';
-const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest';
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'ministral-8b-latest';
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 // jeton dérivé pour sécuriser le webhook Whapi entrant
 const WHAPI_HOOK_T = WHAPI_TOKEN ? crypto.createHash('sha256').update(WHAPI_TOKEN).digest('hex').slice(0, 24) : '';
