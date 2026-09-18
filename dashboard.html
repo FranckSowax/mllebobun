@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
     :root {
       --noir: #0B0805;
@@ -117,6 +118,23 @@
       color: rgba(244,237,224,.7);
     }
     .split-chip b { color: var(--ivoire); font-size: .9rem; margin-right: 4px; }
+    .daily-more { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(244,237,224,.08); }
+    .daily-more label { font-family: var(--mono); font-size: .58rem; letter-spacing: .12em; color: rgba(244,237,224,.55); }
+    .daily-more label .vn { display: inline; font-size: .58rem; margin-left: 8px; letter-spacing: .04em; }
+    .daily-more select {
+      background: var(--noir); color: var(--ivoire); border: 1px solid rgba(244,237,224,.25); border-radius: 999px;
+      padding: 8px 14px; font-family: var(--mono); font-size: .7rem; cursor: pointer;
+    }
+    .daily-more select:hover { border-color: var(--caramel); }
+    table.daily tr.picked td { color: var(--caramel); background: rgba(232,145,45,.07); }
+    table.daily tr.picked td:first-child::after { content: " • choisi"; font-size: .62rem; }
+
+    /* ---- graphiques ---- */
+    .charts { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 26px; }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-family: var(--mono); font-size: .56rem; letter-spacing: .1em; color: rgba(244,237,224,.55); }
+    .chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+    .chart-box { position: relative; height: 240px; }
 
     /* ---- imprimante bluetooth ---- */
     .print-ctl { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -487,11 +505,29 @@
           <tbody id="daily-rows"></tbody>
         </table>
       </div>
+      <div class="daily-more" hidden>
+        <label for="daily-older">JOURS PRÉCÉDENTS<span class="vn">Những ngày trước</span></label>
+        <select id="daily-older"><option value="">— choisir un jour —</option></select>
+      </div>
     </section>
     <section class="panel">
       <h2 class="panel-h">Top plats<span class="vn vn-h2">Món bán chạy</span></h2>
       <div id="top-dishes" class="top-dishes"></div>
       <div class="split" id="split"></div>
+    </section>
+  </div>
+
+  <!-- graphiques -->
+  <div class="charts" hidden>
+    <section class="panel">
+      <h2 class="panel-h">Chiffre d'affaires 14 jours<span class="vn vn-h2">Doanh thu 14 ngày</span></h2>
+      <div class="chart-legend"><span><i style="background:var(--caramel)"></i>CA · DOANH THU</span><span><i style="background:var(--vert)"></i>COMMANDES · ĐƠN HÀNG</span></div>
+      <div class="chart-box"><canvas id="chart-ca"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2 class="panel-h">Heures de pointe<span class="vn vn-h2">Giờ cao điểm</span></h2>
+      <div class="chart-legend"><span><i style="background:var(--caramel)"></i>COMMANDES PAR HEURE, 30 JOURS · ĐƠN THEO GIỜ, 30 NGÀY</span></div>
+      <div class="chart-box"><canvas id="chart-hours"></canvas></div>
     </section>
   </div>
 
@@ -679,16 +715,33 @@
           $('#st-week').textContent = eur(s.week.ca);
           $('#st-month').textContent = eur(s.month.ca);
 
+          // 5 derniers jours affichés, les jours précédents (jusqu'à 30) dans un menu déroulant
           const maxCa = Math.max(1, ...s.byDay.map(d => d.ca));
-          $('#daily-rows').innerHTML = s.byDay.map(d => `
-            <tr class="${d.day === s.byDay[0].day && isToday(new Date(d.day + 'T12:00').toISOString()) ? 'today' : ''}">
+          const rowHtml = (d, cls) => `
+            <tr class="${cls}">
               <td>${dayLabel(d.day)}</td>
               <td>${d.orders}</td>
               <td>${eur(d.ca)}</td>
               <td>${d.bowls}</td>
               <td>${eur(d.orders ? Math.round(d.ca / d.orders) : 0)}</td>
               <td class="bar-cell"><div class="ca-bar" style="width:${Math.round(d.ca / maxCa * 100)}%"></div></td>
-            </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:rgba(244,237,224,.4)">—</td></tr>';
+            </tr>`;
+          const recent = s.byDay.slice(0, 5), older = s.byDay.slice(5);
+          $('#daily-rows').innerHTML = recent.map(d =>
+            rowHtml(d, d.day === s.byDay[0].day && isToday(new Date(d.day + 'T12:00').toISOString()) ? 'today' : '')
+          ).join('') || '<tr><td colspan="6" style="text-align:center;color:rgba(244,237,224,.4)">—</td></tr>';
+          const sel = $('#daily-older'), prev = sel.value;
+          sel.innerHTML = '<option value="">— choisir un jour —</option>' +
+            older.map(d => `<option value="${d.day}">${dayLabel(d.day)} · ${d.orders} cmd · ${eur(d.ca)}</option>`).join('');
+          $('.daily-more').hidden = !older.length;
+          sel.value = older.some(d => d.day === prev) ? prev : '';
+          sel.onchange = () => {
+            document.querySelectorAll('#daily-rows tr.picked').forEach(t => t.remove());
+            const d = older.find(x => x.day === sel.value);
+            if (d) $('#daily-rows').insertAdjacentHTML('beforeend', rowHtml(d, 'picked'));
+          };
+          sel.onchange();
+          renderCharts(s);
 
           const maxQ = Math.max(1, ...s.topDishes.map(d => d.qty));
           $('#top-dishes').innerHTML = s.topDishes.map(d => {
@@ -705,6 +758,36 @@
             `<span class="split-chip"><b>${s.totals.drive}</b>🚗 DRIVE</span>` +
             `<span class="split-chip"><b>${s.totals.orders}</b>TOTAL</span>`;
         } catch (e) { /* silencieux */ }
+      }
+
+      // ---- graphiques (Chart.js) : CA 14 jours + heures de pointe ----
+      let chCa = null, chHours = null;
+      function renderCharts(s) {
+        if (!window.Chart) return;
+        Chart.defaults.color = 'rgba(244,237,224,.55)';
+        Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+        Chart.defaults.font.size = 10;
+        const grid = { color: 'rgba(244,237,224,.06)' };
+        const tip = { backgroundColor: '#1d1610', borderColor: 'rgba(232,145,45,.4)', borderWidth: 1, titleColor: '#F4EDE0', bodyColor: '#F4EDE0', padding: 10 };
+
+        const days = s.byDay.slice(0, 14).reverse();
+        const caData = { labels: days.map(d => dayLabel(d.day)), datasets: [
+          { type: 'bar', label: 'CA', data: days.map(d => d.ca / 100), backgroundColor: 'rgba(232,145,45,.8)', hoverBackgroundColor: '#f5a848', borderRadius: 6, yAxisID: 'y', order: 2 },
+          { type: 'line', label: 'Commandes', data: days.map(d => d.orders), borderColor: '#2ECC71', backgroundColor: 'rgba(46,204,113,.12)', tension: .35, fill: true, pointRadius: 3, pointBackgroundColor: '#2ECC71', yAxisID: 'y1', order: 1 }
+        ] };
+        const caOpts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => c.dataset.type === 'bar' ? ' CA ' + eur(Math.round(c.parsed.y * 100)) : ' ' + c.parsed.y + ' commande' + (c.parsed.y > 1 ? 's' : '') } } },
+          scales: { x: { grid: { display: false } }, y: { grid, ticks: { callback: v => v + ' €' } }, y1: { position: 'right', grid: { display: false }, ticks: { precision: 0 } } } };
+        if (chCa) { chCa.data = caData; chCa.update(); } else chCa = new Chart($('#chart-ca'), { data: caData, options: caOpts });
+
+        const hs = (s.byHour || []).filter(h => h.hour >= 10 && h.hour <= 23);
+        const maxH = Math.max(1, ...hs.map(h => h.orders));
+        const hData = { labels: hs.map(h => h.hour + 'h'), datasets: [{ data: hs.map(h => h.orders),
+          backgroundColor: hs.map(h => h.orders === maxH && h.orders ? '#E8912D' : 'rgba(232,145,45,.35)'), hoverBackgroundColor: '#f5a848', borderRadius: 6 }] };
+        const hOpts = { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.parsed.y + ' commande' + (c.parsed.y > 1 ? 's' : '') + ' · ' + eur(hs[c.dataIndex].ca) } } },
+          scales: { x: { grid: { display: false } }, y: { grid, ticks: { precision: 0 } } } };
+        if (chHours) { chHours.data = hData; chHours.update(); } else chHours = new Chart($('#chart-hours'), { type: 'bar', data: hData, options: hOpts });
       }
 
       let all = [];
@@ -1080,7 +1163,7 @@
           return;
         }
         $('#login').style.display = 'none';
-        document.querySelectorAll('header, #view-tabs, .stats, .analytics, .tablewrap').forEach(el => { el.hidden = false; });
+        document.querySelectorAll('header, #view-tabs, .stats, .analytics, .charts, .tablewrap').forEach(el => { el.hidden = false; });
         $('#empty').hidden = all.length > 0;
         connectStream();
         loadStats();
@@ -1161,6 +1244,7 @@
         const menu = b.dataset.view === 'menu';
         $('.stats').hidden = menu;
         $('.analytics').hidden = menu;
+        $('.charts').hidden = menu;
         document.querySelectorAll('.tablewrap').forEach(el => { el.hidden = menu; });
         $('#menu-view').hidden = !menu;
         if (menu) loadMenu();

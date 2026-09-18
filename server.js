@@ -1386,6 +1386,7 @@ app.get('/api/translate', checkKey, async (req, res) => {
 /* statistiques : historique par jour + KPIs (fuseau Europe/Paris) */
 const dayFmt = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' });
 const parisDay = iso => dayFmt.format(new Date(iso)); // 'YYYY-MM-DD'
+const hourFmt = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false });
 const isBowl = name => !/^suppl[ée]ment/i.test(name || '');
 const bowlsOf = o => o.items.reduce((s, i) => s + (isBowl(i.name) ? i.qty : 0), 0);
 
@@ -1393,6 +1394,7 @@ app.get('/api/stats', checkKey, (req, res) => {
   const today = parisDay(new Date().toISOString());
   const days = {};       // 'YYYY-MM-DD' -> {orders, ca, bowls}
   const dishes = {};     // name -> qty (plats uniquement)
+  const hours = Array.from({ length: 24 }, () => ({ orders: 0, ca: 0 }));   // heure Paris, 30 derniers jours
   let online = 0, surplace = 0, drive = 0;
   const now = Date.now();
   let ca7 = 0, ord7 = 0, ca30 = 0, ord30 = 0;
@@ -1407,7 +1409,11 @@ app.get('/api/stats', checkKey, (req, res) => {
     o.items.forEach(i => { if (isBowl(i.name)) dishes[i.name] = (dishes[i.name] || 0) + i.qty; });
     const age = now - new Date(o.date).getTime();
     if (age <= 7 * 864e5) { ca7 += o.amount; ord7++; }
-    if (age <= 30 * 864e5) { ca30 += o.amount; ord30++; }
+    if (age <= 30 * 864e5) {
+      ca30 += o.amount; ord30++;
+      const h = Number(hourFmt.format(new Date(o.date)).replace(/\D/g, '')) % 24;
+      hours[h].orders++; hours[h].ca += o.amount;
+    }
   }
 
   const td = days[today] || { orders: 0, ca: 0, bowls: 0 };
@@ -1424,7 +1430,7 @@ app.get('/api/stats', checkKey, (req, res) => {
     week: { ca: ca7, orders: ord7 },
     month: { ca: ca30, orders: ord30 },
     totals: { orders: online + surplace, online, surplace, drive },
-    byDay, topDishes, source: sb ? 'supabase' : 'volume'
+    byDay, topDishes, byHour: hours.map((v, hour) => ({ hour, ...v })), source: sb ? 'supabase' : 'volume'
   });
 });
 
