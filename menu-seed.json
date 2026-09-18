@@ -453,7 +453,7 @@
       "name_vn": "Bia Sài Gòn",
       "description": "Bière vietnamienne 33 cl.",
       "amount": 300,
-      "image": "",
+      "image": "/assets/plats/biere-saigon.webp",
       "sup": false,
       "active": true,
       "sort": 71

@@ -39,7 +39,7 @@ const NEW_DISHES = [
   { id: 'jus_goyave', cat: 'boissons', name: 'Jus de Goyave', name_vn: 'Nước ổi', amount: 250, sort: 68, description: 'Jus de goyave.' },
   { id: 'jus_coco', cat: 'boissons', name: 'Jus de Coco', name_vn: 'Nước dừa', amount: 250, sort: 69, description: 'Jus de coco.' },
   { id: 'jus_mangue', cat: 'boissons', name: 'Jus de Mangue', name_vn: 'Nước xoài', amount: 250, sort: 70, description: 'Jus de mangue.' },
-  { id: 'biere_saigon', cat: 'boissons', name: 'Bière Saigon', name_vn: 'Bia Sài Gòn', amount: 300, sort: 71, description: 'Bière vietnamienne 33 cl.', image: '' }
+  { id: 'biere_saigon', cat: 'boissons', name: 'Bière Saigon', name_vn: 'Bia Sài Gòn', amount: 300, sort: 71, description: 'Bière vietnamienne 33 cl.' }
 ];
 
 (async () => {

@@ -130,8 +130,16 @@
     table.daily tr.picked td:first-child::after { content: " • choisi"; font-size: .62rem; }
 
     /* ---- graphiques ---- */
-    .charts { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; margin-bottom: 26px; }
+    .charts { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+    @media (max-width: 1200px) { .charts { grid-template-columns: 1fr 1fr; } .charts .panel:first-child { grid-column: 1 / -1; } }
     @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .donut-wrap { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; height: 240px; }
+    .donut-box { position: relative; height: 150px; }
+    .donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: .74rem; font-weight: 300; overflow: hidden; }
+    .donut-legend li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; list-style: none; }
+    .donut-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .donut-legend b { font-family: var(--mono); font-size: .7rem; font-weight: 500; color: var(--caramel); }
+    .donut-legend .vn { display: block; font-size: .58rem; letter-spacing: 0; }
     .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-family: var(--mono); font-size: .56rem; letter-spacing: .1em; color: rgba(244,237,224,.55); }
     .chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
     .chart-box { position: relative; height: 240px; }
@@ -529,6 +537,11 @@
       <div class="chart-legend"><span><i style="background:var(--caramel)"></i>COMMANDES PAR HEURE, 30 JOURS · ĐƠN THEO GIỜ, 30 NGÀY</span></div>
       <div class="chart-box"><canvas id="chart-hours"></canvas></div>
     </section>
+    <section class="panel">
+      <h2 class="panel-h">Répartition des plats<span class="vn vn-h2">Tỷ lệ món bán ra</span></h2>
+      <div class="chart-legend"><span>PART DE CHAQUE PLAT · PHẦN TRĂM MỖI MÓN</span></div>
+      <div class="donut-wrap"><div class="donut-box"><canvas id="chart-top"></canvas></div><ul class="donut-legend" id="donut-legend"></ul></div>
+    </section>
   </div>
 
   <div class="tablewrap" hidden>
@@ -761,7 +774,7 @@
       }
 
       // ---- graphiques (Chart.js) : CA 14 jours + heures de pointe ----
-      let chCa = null, chHours = null;
+      let chCa = null, chHours = null, chTop = null;
       function renderCharts(s) {
         if (!window.Chart) return;
         Chart.defaults.color = 'rgba(244,237,224,.55)';
@@ -788,6 +801,20 @@
           plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.parsed.y + ' commande' + (c.parsed.y > 1 ? 's' : '') + ' · ' + eur(hs[c.dataIndex].ca) } } },
           scales: { x: { grid: { display: false } }, y: { grid, ticks: { precision: 0 } } } };
         if (chHours) { chHours.data = hData; chHours.update(); } else chHours = new Chart($('#chart-hours'), { type: 'bar', data: hData, options: hOpts });
+
+        // donut : part de chaque plat (top 6 + autres)
+        const palette = ['#E8912D', '#2ECC71', '#F5C46B', '#C6402B', '#86B27A', '#3D8BFF', 'rgba(244,237,224,.35)'];
+        const top = s.topDishes.slice(0, 6), rest = s.topDishes.slice(6).reduce((a, d) => a + d.qty, 0);
+        const parts = rest ? [...top, { name: 'Autres', qty: rest }] : top;
+        const totalQ = Math.max(1, parts.reduce((a, d) => a + d.qty, 0));
+        const tData = { labels: parts.map(d => d.name), datasets: [{ data: parts.map(d => d.qty), backgroundColor: parts.map((d, i) => palette[i % palette.length]), borderColor: '#151009', borderWidth: 3, hoverOffset: 6 }] };
+        const tOpts = { responsive: true, maintainAspectRatio: false, cutout: '68%',
+          plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => ' ' + c.parsed + ' · ' + Math.round(c.parsed / totalQ * 100) + ' %' } } } };
+        if (chTop) { chTop.data = tData; chTop.update(); } else chTop = new Chart($('#chart-top'), { type: 'doughnut', data: tData, options: tOpts });
+        $('#donut-legend').innerHTML = parts.map((d, i) => {
+          const vn = d.name === 'Autres' ? 'Món khác' : vnItem(d.name);
+          return `<li><i style="background:${palette[i % palette.length]}"></i><span>${d.name}${vn ? `<span class="vn">${vn}</span>` : ''}</span><b>${Math.round(d.qty / totalQ * 100)} %</b></li>`;
+        }).join('');
       }
 
       let all = [];
